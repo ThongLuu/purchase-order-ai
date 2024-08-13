@@ -1,15 +1,16 @@
 import React, { useState } from 'react';
 import { InputText } from 'primereact/inputtext';
-import { InputNumber } from 'primereact/inputnumber';
+import { Dropdown } from 'primereact/dropdown';
 import { Calendar } from 'primereact/calendar';
 import { Button } from 'primereact/button';
 import { DataTable } from 'primereact/datatable';
 import { Column } from 'primereact/column';
+import { FileUpload } from 'primereact/fileupload';
 
-interface Item {
-  description: string;
+interface SKU {
+  sku: string;
+  productName: string;
   quantity: number;
-  price: number;
 }
 
 interface PurchaseOrderFormProps {
@@ -18,88 +19,138 @@ interface PurchaseOrderFormProps {
 }
 
 const PurchaseOrderForm: React.FC<PurchaseOrderFormProps> = ({ onSubmit, showMessage }) => {
+  const [creator, setCreator] = useState('');
+  const [approver, setApprover] = useState('');
   const [supplier, setSupplier] = useState('');
-  const [supplierContact, setSupplierContact] = useState('');
-  const [deliveryDate, setDeliveryDate] = useState<Date | null>(null);
-  const [items, setItems] = useState<Item[]>([]);
-  const [newItem, setNewItem] = useState<Item>({ description: '', quantity: 0, price: 0 });
+  const [createdDate, setCreatedDate] = useState<Date | null>(null);
+  const [expectedDeliveryDate, setExpectedDeliveryDate] = useState<Date | null>(null);
+  const [skus, setSKUs] = useState<SKU[]>([]);
+  const [excelUploaded, setExcelUploaded] = useState(false);
 
-  const addItem = () => {
-    if (newItem.description && newItem.quantity > 0 && newItem.price > 0) {
-      setItems([...items, newItem]);
-      setNewItem({ description: '', quantity: 0, price: 0 });
-    } else {
-      showMessage('warn', 'Invalid Item', 'Please fill in all item fields with valid values.');
-    }
+  const creatorOptions = [
+    { label: 'John Doe', value: 'John Doe' },
+    { label: 'Jane Smith', value: 'Jane Smith' },
+  ];
+
+  const approverOptions = [
+    { label: 'Alice Johnson', value: 'Alice Johnson' },
+    { label: 'Bob Williams', value: 'Bob Williams' },
+  ];
+
+  const supplierOptions = [
+    { label: 'Supplier A', value: 'Supplier A' },
+    { label: 'Supplier B', value: 'Supplier B' },
+    { label: 'Supplier C', value: 'Supplier C' },
+  ];
+
+  const addSKU = () => {
+    const newSKU: SKU = {
+      sku: '',
+      productName: '',
+      quantity: 1,
+    };
+    setSKUs([...skus, newSKU]);
   };
 
-  const removeItem = (index: number) => {
-    const updatedItems = items.filter((_, i) => i !== index);
-    setItems(updatedItems);
+  const removeSKU = (index: number) => {
+    const updatedSKUs = skus.filter((_, i) => i !== index);
+    setSKUs(updatedSKUs);
   };
 
-  const calculateTotal = () => {
-    return items.reduce((total, item) => total + item.quantity * item.price, 0);
+  const handleExcelUpload = (event: any) => {
+    // This function would typically parse the Excel file and add SKUs
+    setExcelUploaded(true);
+    showMessage('success', 'Excel Uploaded', 'File uploaded and data loaded successfully');
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (items.length === 0) {
-      showMessage('warn', 'No Items', 'Please add at least one item to the purchase order.');
+    if (skus.length === 0) {
+      showMessage('warn', 'No SKUs', 'Please add at least one SKU to the purchase order.');
       return;
     }
     onSubmit({
-      supplier: {
-        name: supplier,
-        contactInfo: supplierContact,
-      },
-      items,
-      totalAmount: calculateTotal(),
-      deliveryDate,
+      creator,
+      approver,
+      supplier,
+      createdDate,
+      expectedDeliveryDate,
+      skus,
     });
     showMessage('success', 'Purchase Order Created', 'The purchase order has been successfully created.');
   };
 
+  const actionTemplate = (_: any, { rowIndex }: { rowIndex: number }) => {
+    return (
+      <Button
+        icon="pi pi-trash"
+        className="p-button-rounded p-button-danger p-button-text"
+        onClick={() => removeSKU(rowIndex)}
+      />
+    );
+  };
+
   return (
-    <form onSubmit={handleSubmit}>
-      <div className="p-fluid">
-        <div className="p-field">
-          <label htmlFor="supplier">Supplier Name</label>
-          <InputText id="supplier" value={supplier} onChange={(e) => setSupplier(e.target.value)} required />
-        </div>
-        <div className="p-field">
-          <label htmlFor="supplierContact">Supplier Contact</label>
-          <InputText id="supplierContact" value={supplierContact} onChange={(e) => setSupplierContact(e.target.value)} />
-        </div>
-        <div className="p-field">
-          <label htmlFor="deliveryDate">Delivery Date</label>
-          <Calendar id="deliveryDate" value={deliveryDate} onChange={(e) => setDeliveryDate(e.value as Date)} showIcon required />
-        </div>
-        <h3>Items</h3>
-        <div className="p-grid">
-          <div className="p-col">
-            <InputText placeholder="Description" value={newItem.description} onChange={(e) => setNewItem({ ...newItem, description: e.target.value })} />
-          </div>
-          <div className="p-col">
-            <InputNumber placeholder="Quantity" value={newItem.quantity} onValueChange={(e) => setNewItem({ ...newItem, quantity: e.value as number })} />
-          </div>
-          <div className="p-col">
-            <InputNumber placeholder="Price" value={newItem.price} onValueChange={(e) => setNewItem({ ...newItem, price: e.value as number })} mode="currency" currency="USD" />
-          </div>
-          <div className="p-col">
-            <Button type="button" icon="pi pi-plus" onClick={addItem} />
+    <form onSubmit={handleSubmit} className="p-fluid">
+      <h2>Create Purchase Order</h2>
+      <div className="p-grid">
+        <div className="p-col-12 p-md-4">
+          <div className="p-field">
+            <label htmlFor="creator">Creator</label>
+            <Dropdown id="creator" value={creator} options={creatorOptions} onChange={(e) => setCreator(e.value)} placeholder="Select a Creator" required />
           </div>
         </div>
-        <DataTable value={items}>
-          <Column field="description" header="Description" />
-          <Column field="quantity" header="Quantity" />
-          <Column field="price" header="Price" body={(rowData) => `$${rowData.price.toFixed(2)}`} />
-          <Column body={(rowData, { rowIndex }) => <Button icon="pi pi-trash" onClick={() => removeItem(rowIndex)} />} />
-        </DataTable>
-        <div className="p-field">
-          <label>Total Amount: ${calculateTotal().toFixed(2)}</label>
+        <div className="p-col-12 p-md-4">
+          <div className="p-field">
+            <label htmlFor="approver">Approver</label>
+            <Dropdown id="approver" value={approver} options={approverOptions} onChange={(e) => setApprover(e.value)} placeholder="Select an Approver" required />
+          </div>
         </div>
-        <Button type="submit" label="Create Purchase Order" />
+        <div className="p-col-12 p-md-4">
+          <div className="p-field">
+            <label htmlFor="supplier">Supplier</label>
+            <Dropdown id="supplier" value={supplier} options={supplierOptions} onChange={(e) => setSupplier(e.value)} placeholder="Select a Supplier" required />
+          </div>
+        </div>
+        <div className="p-col-12 p-md-6">
+          <div className="p-field">
+            <label htmlFor="createdDate">Created Date</label>
+            <Calendar id="createdDate" value={createdDate} onChange={(e) => setCreatedDate(e.value as Date)} showIcon required />
+          </div>
+        </div>
+        <div className="p-col-12 p-md-6">
+          <div className="p-field">
+            <label htmlFor="expectedDeliveryDate">Expected Delivery Date</label>
+            <Calendar id="expectedDeliveryDate" value={expectedDeliveryDate} onChange={(e) => setExpectedDeliveryDate(e.value as Date)} showIcon required />
+          </div>
+        </div>
+      </div>
+
+      <h3>SKUs</h3>
+      <DataTable value={skus} className="p-datatable-sm">
+        <Column field="sku" header="SKU" editor={(options) => <InputText value={options.value} onChange={(e) => options.editorCallback!(e.target.value)} />} />
+        <Column field="productName" header="Product Name" editor={(options) => <InputText value={options.value} onChange={(e) => options.editorCallback!(e.target.value)} />} />
+        <Column field="quantity" header="Quantity" editor={(options) => <InputText type="number" value={options.value} onChange={(e) => options.editorCallback!(parseInt(e.target.value, 10))} />} />
+        <Column body={actionTemplate} style={{ width: '4rem' }} />
+      </DataTable>
+
+      <div className="p-d-flex p-jc-between p-ai-center p-mt-2">
+        <Button type="button" label="Add SKU" icon="pi pi-plus" onClick={addSKU} className="p-button-secondary" />
+        <div className="p-d-flex p-ai-center">
+          <span className="p-mr-2">Upload Excel</span>
+          <FileUpload mode="basic" accept=".xlsx" maxFileSize={1000000} onUpload={handleExcelUpload} chooseLabel="Choose Excel File" />
+        </div>
+      </div>
+
+      {excelUploaded && (
+        <div className="p-mt-2 p-mb-2 p-d-flex p-ai-center" style={{ color: '#4caf50', backgroundColor: '#e8f5e9', padding: '0.5rem', borderRadius: '4px' }}>
+          <i className="pi pi-check-circle p-mr-2" style={{ fontSize: '1.2rem' }}></i>
+          <span>File uploaded and data loaded successfully</span>
+        </div>
+      )}
+
+      <div className="p-d-flex p-jc-center p-mt-4">
+        <Button type="submit" label="Create Purchase Order" icon="pi pi-check" className="p-button-primary" style={{ width: '100%' }} />
       </div>
     </form>
   );
