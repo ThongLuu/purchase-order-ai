@@ -20,13 +20,21 @@ interface PurchaseOrderFormProps {
 }
 
 const PurchaseOrderForm: React.FC<PurchaseOrderFormProps> = ({ onSubmit, showMessage }) => {
+  const [type, setType] = useState('');
   const [creator, setCreator] = useState('');
   const [approver, setApprover] = useState('');
   const [supplier, setSupplier] = useState('');
+  const [store, setStore] = useState('');
   const [createdDate, setCreatedDate] = useState<Date | null>(null);
   const [expectedDeliveryDate, setExpectedDeliveryDate] = useState<Date | null>(null);
   const [skus, setSKUs] = useState<SKU[]>([]);
   const fileUploadRef = useRef<FileUpload>(null);
+
+  const typeOptions = [
+    { label: 'Normal', value: 'normal' },
+    { label: 'Campaign', value: 'campaign' },
+    { label: 'Debt', value: 'debt' },
+  ];
 
   const creatorOptions = [
     { label: 'John Doe', value: 'John Doe' },
@@ -42,6 +50,12 @@ const PurchaseOrderForm: React.FC<PurchaseOrderFormProps> = ({ onSubmit, showMes
     { label: 'Supplier A', value: 'Supplier A' },
     { label: 'Supplier B', value: 'Supplier B' },
     { label: 'Supplier C', value: 'Supplier C' },
+  ];
+
+  const storeOptions = [
+    { label: 'Store 1', value: 'Store 1' },
+    { label: 'Store 2', value: 'Store 2' },
+    { label: 'Store 3', value: 'Store 3' },
   ];
 
   const addSKU = () => {
@@ -111,9 +125,11 @@ const PurchaseOrderForm: React.FC<PurchaseOrderFormProps> = ({ onSubmit, showMes
     }
     
     onSubmit({
+      type,
       creator,
       approver,
       supplier,
+      store,
       createdDate,
       expectedDeliveryDate,
       skus,
@@ -138,6 +154,12 @@ const PurchaseOrderForm: React.FC<PurchaseOrderFormProps> = ({ onSubmit, showMes
       <div className="p-grid">
         <div className="p-col-12 p-md-4">
           <div className="p-field">
+            <label htmlFor="type">Type</label>
+            <Dropdown id="type" value={type} options={typeOptions} onChange={(e) => setType(e.value)} placeholder="Select a Type" required />
+          </div>
+        </div>
+        <div className="p-col-12 p-md-4">
+          <div className="p-field">
             <label htmlFor="creator">Creator</label>
             <Dropdown id="creator" value={creator} options={creatorOptions} onChange={(e) => setCreator(e.value)} placeholder="Select a Creator" required />
           </div>
@@ -154,13 +176,19 @@ const PurchaseOrderForm: React.FC<PurchaseOrderFormProps> = ({ onSubmit, showMes
             <Dropdown id="supplier" value={supplier} options={supplierOptions} onChange={(e) => setSupplier(e.value)} placeholder="Select a Supplier" required />
           </div>
         </div>
-        <div className="p-col-12 p-md-6">
+        <div className="p-col-12 p-md-4">
+          <div className="p-field">
+            <label htmlFor="store">Store</label>
+            <Dropdown id="store" value={store} options={storeOptions} onChange={(e) => setStore(e.value)} placeholder="Select a Store" required />
+          </div>
+        </div>
+        <div className="p-col-12 p-md-4">
           <div className="p-field">
             <label htmlFor="createdDate">Created Date</label>
             <Calendar id="createdDate" value={createdDate} onChange={(e) => setCreatedDate(e.value as Date)} showIcon required />
           </div>
         </div>
-        <div className="p-col-12 p-md-6">
+        <div className="p-col-12 p-md-4">
           <div className="p-field">
             <label htmlFor="expectedDeliveryDate">Expected Delivery Date</label>
             <Calendar id="expectedDeliveryDate" value={expectedDeliveryDate} onChange={(e) => setExpectedDeliveryDate(e.value as Date)} showIcon required />
