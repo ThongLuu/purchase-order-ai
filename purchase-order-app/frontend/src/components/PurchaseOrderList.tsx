@@ -9,11 +9,15 @@ import axios, { AxiosError } from 'axios';
 import { Message } from 'primereact/message';
 
 interface PurchaseOrder {
-  id: string;
-  sku: string;
-  productName: string;
-  store: string;
-  createdDate: string;
+  _id: string;
+  orderNumber: string;
+  supplier: {
+    name: string;
+  };
+  totalAmount: number;
+  deliveryDate: string;
+  status: string;
+  createdAt: string;
 }
 
 interface PurchaseOrderListProps {
@@ -25,9 +29,9 @@ const PurchaseOrderList: React.FC<PurchaseOrderListProps> = ({ showMessage }) =>
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [filters, setFilters] = useState({
-    sku: '',
-    productName: '',
-    store: '',
+    orderNumber: '',
+    supplierName: '',
+    status: '',
     createdDate: null as Date | null,
   });
 
@@ -47,22 +51,19 @@ const PurchaseOrderList: React.FC<PurchaseOrderListProps> = ({ showMessage }) =>
         navigate('/login');
         return;
       }
-      const response = await axios.get<PurchaseOrder[]>('http://localhost:5000/api/purchase-orders', {
+      const response = await axios.get<{ purchaseOrders: PurchaseOrder[] }>('http://localhost:5000/api/purchase-orders', {
         headers: {
           'Authorization': `Bearer ${token}`
         }
       });
-      console.log("response", response);
       
-      // Ensure that the response data is an array
-      if (Array.isArray(response.data)) {
-        setPurchaseOrders(response.data);
+      if (response.data && Array.isArray(response.data.purchaseOrders)) {
+        setPurchaseOrders(response.data.purchaseOrders);
       } else {
         console.error('Invalid response data:', response.data);
         setError('Received invalid data from the server. Please try again.');
         setPurchaseOrders([]);
       }
-      setLoading(false);
     } catch (error) {
       console.error('Error fetching purchase orders:', error);
       let errorMessage = 'Failed to fetch purchase orders. Please try again.';
@@ -80,6 +81,7 @@ const PurchaseOrderList: React.FC<PurchaseOrderListProps> = ({ showMessage }) =>
       }
       setError(errorMessage);
       setPurchaseOrders([]);
+    } finally {
       setLoading(false);
     }
   };
@@ -92,14 +94,14 @@ const PurchaseOrderList: React.FC<PurchaseOrderListProps> = ({ showMessage }) =>
     setFilters({ ...filters, [field]: value });
   };
 
-  const filteredPurchaseOrders = Array.isArray(purchaseOrders) ? purchaseOrders.filter((order) => {
+  const filteredPurchaseOrders = purchaseOrders.filter((order) => {
     return (
-      order.sku.toLowerCase().includes(filters.sku.toLowerCase()) &&
-      order.productName.toLowerCase().includes(filters.productName.toLowerCase()) &&
-      order.store.toLowerCase().includes(filters.store.toLowerCase()) &&
-      (filters.createdDate === null || order.createdDate === filters.createdDate?.toISOString().split('T')[0])
+      order.orderNumber.toLowerCase().includes(filters.orderNumber.toLowerCase()) &&
+      order.supplier.name.toLowerCase().includes(filters.supplierName.toLowerCase()) &&
+      order.status.toLowerCase().includes(filters.status.toLowerCase()) &&
+      (filters.createdDate === null || new Date(order.createdAt).toDateString() === filters.createdDate?.toDateString())
     );
-  }) : [];
+  });
 
   return (
     <div className="purchase-order-list">
@@ -112,21 +114,21 @@ const PurchaseOrderList: React.FC<PurchaseOrderListProps> = ({ showMessage }) =>
       </div>
       <div className="p-d-flex p-mt-3">
         <InputText
-          placeholder="Filter by SKU"
-          value={filters.sku}
-          onChange={(e) => handleFilterChange('sku', e.target.value)}
+          placeholder="Filter by Order Number"
+          value={filters.orderNumber}
+          onChange={(e) => handleFilterChange('orderNumber', e.target.value)}
           className="p-mr-2"
         />
         <InputText
-          placeholder="Filter by Product Name"
-          value={filters.productName}
-          onChange={(e) => handleFilterChange('productName', e.target.value)}
+          placeholder="Filter by Supplier Name"
+          value={filters.supplierName}
+          onChange={(e) => handleFilterChange('supplierName', e.target.value)}
           className="p-mr-2"
         />
         <InputText
-          placeholder="Filter by Store"
-          value={filters.store}
-          onChange={(e) => handleFilterChange('store', e.target.value)}
+          placeholder="Filter by Status"
+          value={filters.status}
+          onChange={(e) => handleFilterChange('status', e.target.value)}
           className="p-mr-2"
         />
         <Calendar
@@ -137,11 +139,12 @@ const PurchaseOrderList: React.FC<PurchaseOrderListProps> = ({ showMessage }) =>
         />
       </div>
       <DataTable value={filteredPurchaseOrders} className="p-mt-3" loading={loading}>
-        <Column field="id" header="ID" />
-        <Column field="sku" header="SKU" />
-        <Column field="productName" header="Product Name" />
-        <Column field="store" header="Store" />
-        <Column field="createdDate" header="Created Date" />
+        <Column field="orderNumber" header="Order Number" />
+        <Column field="supplier.name" header="Supplier Name" />
+        <Column field="totalAmount" header="Total Amount" />
+        <Column field="deliveryDate" header="Delivery Date" />
+        <Column field="status" header="Status" />
+        <Column field="createdAt" header="Created Date" />
       </DataTable>
     </div>
   );

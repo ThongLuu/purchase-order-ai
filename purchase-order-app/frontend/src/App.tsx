@@ -46,9 +46,33 @@ const App: React.FC = () => {
     toastRef.current?.show({ severity, summary, detail });
   };
 
-  const handlePurchaseOrderSubmit = (data: any) => {
-    console.log('Purchase Order submitted:', data);
-    showMessage('success', 'Purchase Order Submitted', 'Your purchase order has been successfully submitted.');
+  const handlePurchaseOrderSubmit = async (data: any) => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found');
+      }
+
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/purchase-orders`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify(data),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to create purchase order');
+      }
+
+      const result = await response.json();
+      console.log('Purchase Order submitted:', result);
+      showMessage('success', 'Purchase Order Submitted', 'Your purchase order has been successfully submitted and saved.');
+    } catch (error) {
+      console.error('Error submitting purchase order:', error);
+      showMessage('error', 'Submission Failed', 'There was an error submitting your purchase order. Please try again.');
+    }
   };
 
   const validateToken = async (token: string) => {

@@ -12,6 +12,7 @@ interface SKU {
   sku: string;
   productName: string;
   quantity: number;
+  price: number;
 }
 
 interface PurchaseOrderFormProps {
@@ -63,6 +64,7 @@ const PurchaseOrderForm: React.FC<PurchaseOrderFormProps> = ({ onSubmit, showMes
       sku: '',
       productName: '',
       quantity: 1,
+      price: 0,
     };
     setSKUs([...skus, newSKU]);
   };
@@ -87,6 +89,7 @@ const PurchaseOrderForm: React.FC<PurchaseOrderFormProps> = ({ onSubmit, showMes
           sku: row.SKU?.toString() || '',
           productName: row.ProductName?.toString() || '',
           quantity: parseInt(row.Quantity, 10) || 0,
+          price: parseFloat(row.Price) || 0,
         }));
 
         if (newSKUs.length === 0) {
@@ -124,18 +127,26 @@ const PurchaseOrderForm: React.FC<PurchaseOrderFormProps> = ({ onSubmit, showMes
       return;
     }
     
+    // Transform the data to match the backend expectations
+    const vendorName = supplier;
+    const items = skus.map(sku => ({
+      name: sku.productName,
+      quantity: sku.quantity,
+      unitPrice: sku.price
+    }));
+    const totalAmount = skus.reduce((total, sku) => total + (sku.quantity * sku.price), 0);
+
     onSubmit({
+      vendorName,
+      items,
+      totalAmount,
       type,
       creator,
       approver,
-      supplier,
       store,
       createdDate,
       expectedDeliveryDate,
-      skus,
     });
-    
-    showMessage('success', 'Purchase Order Created', 'The purchase order has been successfully created.');
   };
 
   const actionTemplate = (_: any, { rowIndex }: { rowIndex: number }) => {
@@ -201,6 +212,7 @@ const PurchaseOrderForm: React.FC<PurchaseOrderFormProps> = ({ onSubmit, showMes
         <Column field="sku" header="SKU" editor={(options) => <InputText value={options.value} onChange={(e) => options.editorCallback!(e.target.value)} />} />
         <Column field="productName" header="Product Name" editor={(options) => <InputText value={options.value} onChange={(e) => options.editorCallback!(e.target.value)} />} />
         <Column field="quantity" header="Quantity" editor={(options) => <InputText type="number" value={options.value} onChange={(e) => options.editorCallback!(parseInt(e.target.value, 10))} />} />
+        <Column field="price" header="Price" editor={(options) => <InputText type="number" value={options.value} onChange={(e) => options.editorCallback!(parseFloat(e.target.value))} />} />
         <Column body={actionTemplate} style={{ width: '4rem' }} />
       </DataTable>
 
