@@ -12,6 +12,20 @@ import 'primereact/resources/primereact.min.css';
 import 'primeicons/primeicons.css';
 import 'primeflex/primeflex.css';
 
+interface PurchaseOrderData {
+  purchaseOrderNumber: string;
+  supplier: { name: string };
+  items: Array<{ sku: string; productName: string; description: string; quantity: number; price: number }>;
+  totalAmount: number;
+  deliveryDate: string;
+  status: string;
+  type: string;
+  creator: string;
+  approver: string;
+  store: string;
+  createdDate: string;
+}
+
 const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   return (
     <div className="layout">
@@ -46,13 +60,13 @@ const App: React.FC = () => {
     toastRef.current?.show({ severity, summary, detail });
   };
 
-  const handlePurchaseOrderSubmit = async (data: any) => {
+  const handlePurchaseOrderSubmit = async (data: PurchaseOrderData) => {
     try {
       const token = localStorage.getItem('token');
       if (!token) {
         throw new Error('No authentication token found');
       }
-
+      
       const response = await fetch(`${process.env.REACT_APP_API_URL}/api/purchase-orders`, {
         method: 'POST',
         headers: {
@@ -63,15 +77,15 @@ const App: React.FC = () => {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to create purchase order');
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to create purchase order');
       }
 
       const result = await response.json();
-      console.log('Purchase Order submitted:', result);
       showMessage('success', 'Purchase Order Submitted', 'Your purchase order has been successfully submitted and saved.');
     } catch (error) {
       console.error('Error submitting purchase order:', error);
-      showMessage('error', 'Submission Failed', 'There was an error submitting your purchase order. Please try again.');
+      showMessage('error', 'Submission Failed', error instanceof Error ? error.message : 'There was an error submitting your purchase order. Please try again.');
     }
   };
 

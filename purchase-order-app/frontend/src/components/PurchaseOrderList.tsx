@@ -96,10 +96,10 @@ const PurchaseOrderList: React.FC<PurchaseOrderListProps> = ({ showMessage }) =>
 
   const filteredPurchaseOrders = purchaseOrders.filter((order) => {
     return (
-      order.orderNumber.toLowerCase().includes(filters.orderNumber.toLowerCase()) &&
-      order.supplier.name.toLowerCase().includes(filters.supplierName.toLowerCase()) &&
-      order.status.toLowerCase().includes(filters.status.toLowerCase()) &&
-      (filters.createdDate === null || new Date(order.createdAt).toDateString() === filters.createdDate?.toDateString())
+      (order.orderNumber?.toLowerCase().includes(filters.orderNumber.toLowerCase()) ?? false) &&
+      (order.supplier?.name?.toLowerCase().includes(filters.supplierName.toLowerCase()) ?? false) &&
+      (order.status?.toLowerCase().includes(filters.status.toLowerCase()) ?? false) &&
+      (filters.createdDate === null || (order.createdAt && new Date(order.createdAt).toDateString() === filters.createdDate?.toDateString()))
     );
   });
 

@@ -6,7 +6,7 @@ const auth = require('../middleware/auth');
 // Get all purchase orders with pagination, sorting, and filtering
 router.get('/', auth, async (req, res) => {
   try {
-    const { page = 1, limit = 10, sortBy = 'createdAt', sortOrder = 'desc', status, vendorName } = req.query;
+    const { page = 1, limit = 10, sortBy = 'createdAt', sortOrder = 'desc', status, supplierName } = req.query;
     const options = {
       page: parseInt(page, 10),
       limit: parseInt(limit, 10),
@@ -16,7 +16,7 @@ router.get('/', auth, async (req, res) => {
 
     const query = {};
     if (status) query.status = status;
-    if (vendorName) query.vendorName = new RegExp(vendorName, 'i');
+    if (supplierName) query['supplier.name'] = new RegExp(supplierName, 'i');
 
     const result = await PurchaseOrder.paginate(query, options);
 
@@ -36,22 +36,24 @@ router.get('/', auth, async (req, res) => {
 router.post('/', auth, async (req, res) => {
   try {
     // Input validation
-    const { vendorName, items, totalAmount } = req.body;
-    if (!vendorName || !items || !Array.isArray(items) || items.length === 0 || !totalAmount) {
-      return res.status(400).json({ message: 'Invalid input. Please provide vendorName, items array, and totalAmount.' });
+    const { purchaseOrderNumber, supplier, items, totalAmount, deliveryDate } = req.body;
+    if (!purchaseOrderNumber || !supplier || !supplier.name || !items || !Array.isArray(items) || items.length === 0 || !totalAmount || !deliveryDate) {
+      return res.status(400).json({ message: 'Invalid input. Please provide purchaseOrderNumber, supplier.name, items array, totalAmount, and deliveryDate.' });
     }
 
     // Validate items
     for (const item of items) {
-      if (!item.name || !item.quantity || !item.unitPrice) {
-        return res.status(400).json({ message: 'Invalid item. Each item must have a name, quantity, and unitPrice.' });
+      if (!item.description || !item.quantity || !item.price) {
+        return res.status(400).json({ message: 'Invalid item. Each item must have a description, quantity, and price.' });
       }
     }
 
     const purchaseOrder = new PurchaseOrder({
-      vendorName,
+      purchaseOrderNumber,
+      supplier,
       items,
       totalAmount,
+      deliveryDate,
       status: 'pending',
       createdBy: req.user.id
     });
@@ -73,7 +75,7 @@ router.patch('/:id', auth, async (req, res) => {
     const updatedPurchaseOrder = await PurchaseOrder.findByIdAndUpdate(
       req.params.id,
       req.body,
-      { new: true }
+      { new: true, runValidators: true }
     );
     if (!updatedPurchaseOrder) {
       return res.status(404).json({ message: 'Purchase order not found' });

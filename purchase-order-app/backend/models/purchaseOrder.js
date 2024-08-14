@@ -2,7 +2,7 @@ const mongoose = require('mongoose');
 const mongoosePaginate = require('mongoose-paginate-v2');
 
 const PurchaseOrderSchema = new mongoose.Schema({
-  orderNumber: {
+  purchaseOrderNumber: {
     type: String,
     required: true,
     unique: true,
@@ -16,6 +16,14 @@ const PurchaseOrderSchema = new mongoose.Schema({
   },
   items: [
     {
+      sku: {
+        type: String,
+        required: true,
+      },
+      productName: {
+        type: String,
+        required: true,
+      },
       description: {
         type: String,
         required: true,
@@ -73,9 +81,9 @@ const PurchaseOrderSchema = new mongoose.Schema({
 
 PurchaseOrderSchema.pre('save', async function (next) {
   if (this.isNew) {
-    const latestOrder = await this.constructor.findOne({}, {}, { sort: { 'orderNumber': -1 } });
-    const latestNumber = latestOrder ? parseInt(latestOrder.orderNumber.split('-')[1]) : 0;
-    this.orderNumber = `PO-${(latestNumber + 1).toString().padStart(4, '0')}`;
+    const latestOrder = await this.constructor.findOne({}, {}, { sort: { 'purchaseOrderNumber': -1 } });
+    const latestNumber = latestOrder ? parseInt(latestOrder.purchaseOrderNumber.split('-')[1]) : 0;
+    this.purchaseOrderNumber = `PO-${(latestNumber + 1).toString().padStart(4, '0')}`;
   }
   next();
 });
