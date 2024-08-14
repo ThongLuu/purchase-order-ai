@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const PurchaseOrder = require('../models/purchaseOrder');
-const Counter = require('../models/counter'); // We'll create this model
+const Counter = require('../models/counter');
 const auth = require('../middleware/auth');
 
 // Function to generate a unique purchase order number
@@ -32,7 +32,17 @@ router.get('/', auth, async (req, res) => {
     const result = await PurchaseOrder.paginate(query, options);
 
     res.json({
-      purchaseOrders: result.docs,
+      purchaseOrders: result.docs.map(po => ({
+        _id: po._id,
+        orderNumber: po.purchaseOrderNumber,
+        supplier: {
+          name: po.supplier.name
+        },
+        totalAmount: po.totalAmount,
+        deliveryDate: po.deliveryDate,
+        status: po.status,
+        createdAt: po.createdAt
+      })),
       totalPages: result.totalPages,
       currentPage: result.page,
       totalCount: result.totalDocs
