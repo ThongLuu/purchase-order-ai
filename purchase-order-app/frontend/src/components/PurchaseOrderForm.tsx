@@ -17,7 +17,6 @@ interface SKU {
 }
 
 interface PurchaseOrderData {
-  purchaseOrderNumber: string;
   supplier: { name: string };
   items: SKU[];
   totalAmount: number;
@@ -44,7 +43,6 @@ const PurchaseOrderForm: React.FC<PurchaseOrderFormProps> = ({ onSubmit, showMes
   const [createdDate, setCreatedDate] = useState<Date | null>(null);
   const [deliveryDate, setDeliveryDate] = useState<Date | null>(null);
   const [skus, setSKUs] = useState<SKU[]>([]);
-  const [purchaseOrderNumber, setPurchaseOrderNumber] = useState('');
   const fileUploadRef = useRef<FileUpload>(null);
 
   const typeOptions = [
@@ -138,7 +136,7 @@ const PurchaseOrderForm: React.FC<PurchaseOrderFormProps> = ({ onSubmit, showMes
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!purchaseOrderNumber || !supplierName || !type || !creator || !approver || !store || !createdDate || !deliveryDate) {
+    if (!supplierName || !type || !creator || !approver || !store || !createdDate || !deliveryDate) {
       showMessage('warn', 'Missing Information', 'Please fill in all required fields.');
       return;
     }
@@ -151,7 +149,6 @@ const PurchaseOrderForm: React.FC<PurchaseOrderFormProps> = ({ onSubmit, showMes
     const totalAmount = skus.reduce((total, sku) => total + (sku.quantity * sku.price), 0);
 
     const purchaseOrderData: PurchaseOrderData = {
-      purchaseOrderNumber,
       supplier: { name: supplierName },
       items: skus,
       totalAmount,
@@ -184,12 +181,6 @@ const PurchaseOrderForm: React.FC<PurchaseOrderFormProps> = ({ onSubmit, showMes
     <form onSubmit={handleSubmit} className="p-fluid">
       <h2>Create Purchase Order</h2>
       <div className="p-grid">
-        <div className="p-col-12 p-md-4">
-          <div className="p-field">
-            <label htmlFor="purchaseOrderNumber">Purchase Order Number</label>
-            <InputText id="purchaseOrderNumber" value={purchaseOrderNumber} onChange={(e) => setPurchaseOrderNumber(e.target.value)} required />
-          </div>
-        </div>
         <div className="p-col-12 p-md-4">
           <div className="p-field">
             <label htmlFor="type">Type</label>

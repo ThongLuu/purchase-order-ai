@@ -12,10 +12,17 @@ import 'primereact/resources/primereact.min.css';
 import 'primeicons/primeicons.css';
 import 'primeflex/primeflex.css';
 
+interface SKU {
+  sku: string;
+  productName: string;
+  description: string;
+  quantity: number;
+  price: number;
+}
+
 interface PurchaseOrderData {
-  purchaseOrderNumber: string;
   supplier: { name: string };
-  items: Array<{ sku: string; productName: string; description: string; quantity: number; price: number }>;
+  items: SKU[];
   totalAmount: number;
   deliveryDate: string;
   status: string;
@@ -81,7 +88,7 @@ const App: React.FC = () => {
         throw new Error(errorData.message || 'Failed to create purchase order');
       }
 
-      const result = await response.json();
+      await response.json(); // Consume the response but don't use it
       showMessage('success', 'Purchase Order Submitted', 'Your purchase order has been successfully submitted and saved.');
     } catch (error) {
       console.error('Error submitting purchase order:', error);

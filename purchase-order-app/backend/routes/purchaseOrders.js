@@ -1,7 +1,18 @@
 const express = require('express');
 const router = express.Router();
 const PurchaseOrder = require('../models/purchaseOrder');
+const Counter = require('../models/counter'); // We'll create this model
 const auth = require('../middleware/auth');
+
+// Function to generate a unique purchase order number
+async function generatePurchaseOrderNumber() {
+  const counter = await Counter.findOneAndUpdate(
+    { _id: 'purchaseOrderNumber' },
+    { $inc: { seq: 1 } },
+    { new: true, upsert: true }
+  );
+  return `PO-${counter.seq.toString().padStart(6, '0')}`;
+}
 
 // Get all purchase orders with pagination, sorting, and filtering
 router.get('/', auth, async (req, res) => {
@@ -36,9 +47,9 @@ router.get('/', auth, async (req, res) => {
 router.post('/', auth, async (req, res) => {
   try {
     // Input validation
-    const { purchaseOrderNumber, supplier, items, totalAmount, deliveryDate } = req.body;
-    if (!purchaseOrderNumber || !supplier || !supplier.name || !items || !Array.isArray(items) || items.length === 0 || !totalAmount || !deliveryDate) {
-      return res.status(400).json({ message: 'Invalid input. Please provide purchaseOrderNumber, supplier.name, items array, totalAmount, and deliveryDate.' });
+    const { supplier, items, totalAmount, deliveryDate } = req.body;
+    if (!supplier || !supplier.name || !items || !Array.isArray(items) || items.length === 0 || !totalAmount || !deliveryDate) {
+      return res.status(400).json({ message: 'Invalid input. Please provide supplier.name, items array, totalAmount, and deliveryDate.' });
     }
 
     // Validate items
@@ -47,6 +58,8 @@ router.post('/', auth, async (req, res) => {
         return res.status(400).json({ message: 'Invalid item. Each item must have a description, quantity, and price.' });
       }
     }
+
+    const purchaseOrderNumber = await generatePurchaseOrderNumber();
 
     const purchaseOrder = new PurchaseOrder({
       purchaseOrderNumber,
