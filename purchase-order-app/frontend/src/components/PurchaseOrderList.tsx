@@ -5,6 +5,8 @@ import { Button } from 'primereact/button';
 import { InputText } from 'primereact/inputtext';
 import { Calendar } from 'primereact/calendar';
 import { useNavigate } from 'react-router-dom';
+import axios, { AxiosError } from 'axios';
+import { Message } from 'primereact/message';
 
 interface PurchaseOrder {
   id: string;
@@ -20,6 +22,8 @@ interface PurchaseOrderListProps {
 
 const PurchaseOrderList: React.FC<PurchaseOrderListProps> = ({ showMessage }) => {
   const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
   const [filters, setFilters] = useState({
     sku: '',
     productName: '',
@@ -30,14 +34,55 @@ const PurchaseOrderList: React.FC<PurchaseOrderListProps> = ({ showMessage }) =>
   const navigate = useNavigate();
 
   useEffect(() => {
-    // TODO: Fetch purchase orders from API
-    const mockData: PurchaseOrder[] = [
-      { id: '1', sku: 'SKU001', productName: 'Product 1', store: 'Store A', createdDate: '2023-05-01' },
-      { id: '2', sku: 'SKU002', productName: 'Product 2', store: 'Store B', createdDate: '2023-05-02' },
-      { id: '3', sku: 'SKU003', productName: 'Product 3', store: 'Store C', createdDate: '2023-05-03' },
-    ];
-    setPurchaseOrders(mockData);
+    fetchPurchaseOrders();
   }, []);
+
+  const fetchPurchaseOrders = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const token = localStorage.getItem('token');
+      if (!token) {
+        setError('You are not logged in. Please log in and try again.');
+        navigate('/login');
+        return;
+      }
+      const response = await axios.get<PurchaseOrder[]>('http://localhost:5000/api/purchase-orders', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      console.log("response", response);
+      
+      // Ensure that the response data is an array
+      if (Array.isArray(response.data)) {
+        setPurchaseOrders(response.data);
+      } else {
+        console.error('Invalid response data:', response.data);
+        setError('Received invalid data from the server. Please try again.');
+        setPurchaseOrders([]);
+      }
+      setLoading(false);
+    } catch (error) {
+      console.error('Error fetching purchase orders:', error);
+      let errorMessage = 'Failed to fetch purchase orders. Please try again.';
+      if (axios.isAxiosError(error)) {
+        const axiosError = error as AxiosError;
+        if (axiosError.response) {
+          errorMessage = axiosError.response.data.message || axiosError.message;
+        } else if (axiosError.request) {
+          errorMessage = 'No response received from the server. Please check your network connection.';
+        }
+        if (axiosError.response && axiosError.response.status === 401) {
+          errorMessage = 'You are not logged in. Please log in and try again.';
+          navigate('/login');
+        }
+      }
+      setError(errorMessage);
+      setPurchaseOrders([]);
+      setLoading(false);
+    }
+  };
 
   const handleCreatePurchaseOrder = () => {
     navigate('/create-purchase-order');
@@ -47,17 +92,20 @@ const PurchaseOrderList: React.FC<PurchaseOrderListProps> = ({ showMessage }) =>
     setFilters({ ...filters, [field]: value });
   };
 
-  const filteredPurchaseOrders = purchaseOrders.filter((order) => {
+  const filteredPurchaseOrders = Array.isArray(purchaseOrders) ? purchaseOrders.filter((order) => {
     return (
       order.sku.toLowerCase().includes(filters.sku.toLowerCase()) &&
       order.productName.toLowerCase().includes(filters.productName.toLowerCase()) &&
       order.store.toLowerCase().includes(filters.store.toLowerCase()) &&
       (filters.createdDate === null || order.createdDate === filters.createdDate?.toISOString().split('T')[0])
     );
-  });
+  }) : [];
 
   return (
     <div className="purchase-order-list">
+      {error && (
+        <Message severity="error" text={error} style={{ width: '100%', marginBottom: '20px' }} />
+      )}
       <div className="p-d-flex p-jc-between p-ai-center">
         <h2>Purchase Order List</h2>
         <Button label="Create Purchase Order" icon="pi pi-plus" onClick={handleCreatePurchaseOrder} />
@@ -88,7 +136,7 @@ const PurchaseOrderList: React.FC<PurchaseOrderListProps> = ({ showMessage }) =>
           showIcon
         />
       </div>
-      <DataTable value={filteredPurchaseOrders} className="p-mt-3">
+      <DataTable value={filteredPurchaseOrders} className="p-mt-3" loading={loading}>
         <Column field="id" header="ID" />
         <Column field="sku" header="SKU" />
         <Column field="productName" header="Product Name" />

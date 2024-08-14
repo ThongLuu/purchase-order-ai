@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const mongoosePaginate = require('mongoose-paginate-v2');
 
 const PurchaseOrderSchema = new mongoose.Schema({
   orderNumber: {
@@ -78,5 +79,8 @@ PurchaseOrderSchema.pre('save', async function (next) {
   }
   next();
 });
+
+// Add the mongoose-paginate-v2 plugin to the schema
+PurchaseOrderSchema.plugin(mongoosePaginate);
 
 module.exports = mongoose.model('PurchaseOrder', PurchaseOrderSchema);
