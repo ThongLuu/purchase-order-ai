@@ -46,5 +46,14 @@
       "last 1 firefox version",
       "last 1 safari version"
     ]
+  },
+  "proxy": {
+    "/product/list": {
+      "target": "https://pim.gearvn.xyz",
+      "changeOrigin": true,
+      "pathRewrite": {
+        "^/product/list": "/product/list/v1"
+      }
+    }
   }
 }

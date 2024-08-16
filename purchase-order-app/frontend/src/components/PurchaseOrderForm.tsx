@@ -7,6 +7,7 @@ import { DataTable } from 'primereact/datatable';
 import { Column } from 'primereact/column';
 import { FileUpload } from 'primereact/fileupload';
 import * as XLSX from 'xlsx';
+import SKUAutocomplete from './SKUAutocomplete';
 
 interface SKU {
   sku: string;
@@ -177,6 +178,28 @@ const PurchaseOrderForm: React.FC<PurchaseOrderFormProps> = ({ onSubmit, showMes
     );
   };
 
+  const handleSKUSelect = (rowIndex: number, product: any) => {
+    const updatedSKUs = [...skus];
+    updatedSKUs[rowIndex] = {
+      ...updatedSKUs[rowIndex],
+      sku: product.sku,
+      productName: product.name,
+      description: product.description,
+      price: product.price,
+    };
+    setSKUs(updatedSKUs);
+  };
+
+  const skuEditor = (options: any) => {
+    return (
+      <SKUAutocomplete
+        value={options.value}
+        onChange={(value) => options.editorCallback(value)}
+        onSelect={(product) => handleSKUSelect(options.rowIndex, product)}
+      />
+    );
+  };
+
   return (
     <form onSubmit={handleSubmit} className="p-fluid">
       <h2>Create Purchase Order</h2>
@@ -227,7 +250,7 @@ const PurchaseOrderForm: React.FC<PurchaseOrderFormProps> = ({ onSubmit, showMes
 
       <h3>Items</h3>
       <DataTable value={skus} className="p-datatable-sm" editMode="cell">
-        <Column field="sku" header="SKU" editor={(options) => <InputText value={options.value} onChange={(e) => options.editorCallback!(e.target.value)} />} />
+        <Column field="sku" header="SKU" editor={skuEditor} />
         <Column field="productName" header="Product Name" editor={(options) => <InputText value={options.value} onChange={(e) => options.editorCallback!(e.target.value)} />} />
         <Column field="description" header="Description" editor={(options) => <InputText value={options.value} onChange={(e) => options.editorCallback!(e.target.value)} />} />
         <Column field="quantity" header="Quantity" editor={(options) => <InputText type="number" value={options.value} onChange={(e) => options.editorCallback!(parseInt(e.target.value, 10))} />} />
