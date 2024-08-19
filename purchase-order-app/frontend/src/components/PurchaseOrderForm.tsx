@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, KeyboardEvent } from 'react';
 import { InputText } from 'primereact/inputtext';
 import { Dropdown } from 'primereact/dropdown';
 import { Calendar } from 'primereact/calendar';
@@ -7,7 +7,7 @@ import { DataTable } from 'primereact/datatable';
 import { Column } from 'primereact/column';
 import { FileUpload } from 'primereact/fileupload';
 import * as XLSX from 'xlsx';
-import SKUAutocomplete from './SKUAutocomplete';
+import SKUAutocomplete, { SKUAutocompleteProps } from './SKUAutocomplete';
 
 interface SKU {
   sku: string;
@@ -186,8 +186,15 @@ const PurchaseOrderForm: React.FC<PurchaseOrderFormProps> = ({ onSubmit, showMes
       productName: product.name,
       description: product.description,
       price: product.price,
+      quantity: updatedSKUs[rowIndex].quantity || 1, // Preserve existing quantity or set to 1 if not defined
     };
     setSKUs(updatedSKUs);
+  };
+
+  const handleKeyPress = (e: KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+    }
   };
 
   const skuEditor = (options: any) => {
@@ -196,6 +203,49 @@ const PurchaseOrderForm: React.FC<PurchaseOrderFormProps> = ({ onSubmit, showMes
         value={options.value}
         onChange={(value) => options.editorCallback(value)}
         onSelect={(product) => handleSKUSelect(options.rowIndex, product)}
+        onKeyPress={handleKeyPress}
+      />
+    );
+  };
+
+  const inputEditor = (options: any, field: keyof SKU) => {
+    return (
+      <InputText
+        value={options.value}
+        onChange={(e) => {
+          options.editorCallback(e.target.value);
+          
+          // Update the SKU in the state
+          const updatedSKUs = [...skus];
+          updatedSKUs[options.rowIndex] = {
+            ...updatedSKUs[options.rowIndex],
+            [field]: e.target.value
+          };
+          setSKUs(updatedSKUs);
+        }}
+        onKeyPress={handleKeyPress}
+      />
+    );
+  };
+
+  const numberEditor = (options: any, field: 'quantity' | 'price') => {
+    return (
+      <InputText
+        type="number"
+        value={options.value}
+        onChange={(e) => {
+          const value = field === 'quantity' ? parseInt(e.target.value, 10) : parseFloat(e.target.value);
+          options.editorCallback(value);
+          
+          // Update the SKU in the state
+          const updatedSKUs = [...skus];
+          updatedSKUs[options.rowIndex] = {
+            ...updatedSKUs[options.rowIndex],
+            [field]: value
+          };
+          setSKUs(updatedSKUs);
+        }}
+        onKeyPress={handleKeyPress}
       />
     );
   };
@@ -251,10 +301,10 @@ const PurchaseOrderForm: React.FC<PurchaseOrderFormProps> = ({ onSubmit, showMes
       <h3>Items</h3>
       <DataTable value={skus} className="p-datatable-sm" editMode="cell">
         <Column field="sku" header="SKU" editor={skuEditor} />
-        <Column field="productName" header="Product Name" editor={(options) => <InputText value={options.value} onChange={(e) => options.editorCallback!(e.target.value)} />} />
-        <Column field="description" header="Description" editor={(options) => <InputText value={options.value} onChange={(e) => options.editorCallback!(e.target.value)} />} />
-        <Column field="quantity" header="Quantity" editor={(options) => <InputText type="number" value={options.value} onChange={(e) => options.editorCallback!(parseInt(e.target.value, 10))} />} />
-        <Column field="price" header="Price" editor={(options) => <InputText type="number" value={options.value} onChange={(e) => options.editorCallback!(parseFloat(e.target.value))} />} />
+        <Column field="productName" header="Product Name" editor={(options) => inputEditor(options, 'productName')} />
+        <Column field="description" header="Description" editor={(options) => inputEditor(options, 'description')} />
+        <Column field="quantity" header="Quantity" editor={(options) => numberEditor(options, 'quantity')} />
+        <Column field="price" header="Price" editor={(options) => numberEditor(options, 'price')} />
         <Column body={actionTemplate} style={{ width: '4rem' }} />
       </DataTable>
 

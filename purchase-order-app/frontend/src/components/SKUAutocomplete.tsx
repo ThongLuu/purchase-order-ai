@@ -1,14 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, KeyboardEvent } from 'react';
 import { AutoComplete } from 'primereact/autocomplete';
 import { searchProducts } from '../utils/productAPI';
 
-interface SKUAutocompleteProps {
+export interface SKUAutocompleteProps {
   value: string;
   onChange: (value: string) => void;
   onSelect: (product: any) => void;
+  onKeyPress: (e: KeyboardEvent<HTMLInputElement>) => void;
 }
 
-const SKUAutocomplete: React.FC<SKUAutocompleteProps> = ({ value, onChange, onSelect }) => {
+const SKUAutocomplete: React.FC<SKUAutocompleteProps> = ({ value, onChange, onSelect, onKeyPress }) => {
   const [suggestions, setSuggestions] = useState<any[]>([]);
 
   const searchSKU = async (event: { query: string }) => {
@@ -29,6 +30,7 @@ const SKUAutocomplete: React.FC<SKUAutocompleteProps> = ({ value, onChange, onSe
       field="sku"
       onChange={(e) => onChange(e.value)}
       onSelect={(e) => onSelect(e.value)}
+      onKeyPress={onKeyPress}
       placeholder="Enter SKU"
     />
   );
