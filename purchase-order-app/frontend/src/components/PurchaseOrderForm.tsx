@@ -183,8 +183,8 @@ const PurchaseOrderForm: React.FC<PurchaseOrderFormProps> = ({ onSubmit, showMes
     updatedSKUs[rowIndex] = {
       ...updatedSKUs[rowIndex],
       sku: product.sku,
-      productName: product.name,
-      description: product.description,
+      productName: product.title,
+      description: product.handle,
       price: product.price,
       quantity: updatedSKUs[rowIndex].quantity || 1, // Preserve existing quantity or set to 1 if not defined
     };

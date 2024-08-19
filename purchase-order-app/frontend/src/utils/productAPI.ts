@@ -1,11 +1,12 @@
 import axios, { AxiosRequestConfig } from "axios";
 
-const API_BASE_URL = "https://gearvn.com"; // Update this to match your backend URL
+const API_BASE_URL = process.env.REACT_APP_API_URL || "https://gearvn.com";
 
 export interface Product {
   id: string;
   name: string;
   price: number;
+  sku: string;
   // Add other product properties as needed
 }
 
@@ -23,8 +24,7 @@ export const searchProducts = async (query: string): Promise<Product[]> => {
   try {
     const config: AxiosRequestConfig = {
       method: "post",
-      url: `${process.env.REACT_APP_API_URL}/proxy`,
-      
+      url: `${API_BASE_URL}/proxy`,
       headers: {
         path: "/apps/gvn_search/search_products",
         "Content-Type": "application/json",
@@ -37,7 +37,7 @@ export const searchProducts = async (query: string): Promise<Product[]> => {
       },
     };
     const response = await axios.request(config);
-    return response.data;
+    return response.data.data || []; // Adjust this based on the actual response structure
   } catch (error) {
     console.error("Error searching products:", error);
     throw error;

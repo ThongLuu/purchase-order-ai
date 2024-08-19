@@ -28,9 +28,15 @@ const SKUAutocomplete: React.FC<SKUAutocompleteProps> = ({ value, onChange, onSe
       suggestions={suggestions}
       completeMethod={searchSKU}
       field="sku"
-      onChange={(e) => onChange(e.value)}
-      onSelect={(e) => onSelect(e.value)}
-      onKeyPress={onKeyPress}
+      onChange={(e) => {
+        onChange(e.value);
+      }}
+      onSelect={(e) => {
+        onSelect(e.value);
+      }}
+      onKeyPress={(e) => {
+        onKeyPress(e);
+      }}
       placeholder="Enter SKU"
     />
   );
