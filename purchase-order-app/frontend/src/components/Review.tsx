@@ -1,71 +1,190 @@
-import React, { useState, useEffect } from 'react';
-import { DataTable } from 'primereact/datatable';
-import { Column } from 'primereact/column';
-import { Button } from 'primereact/button';
-import { Dropdown } from 'primereact/dropdown';
-import { InputText } from 'primereact/inputtext';
+import React, { useState, useEffect, useCallback } from "react";
+import { DataTable } from "primereact/datatable";
+import { Column } from "primereact/column";
+import { Button } from "primereact/button";
+import { Dropdown } from "primereact/dropdown";
+import { InputText } from "primereact/inputtext";
+import axios, { AxiosError } from "axios";
+import { useNavigate } from "react-router-dom";
 
 interface PurchaseOrder {
-  id: string;
-  sku: string;
-  quantity: number;
-  creator: string;
-  approver: string;
-  supplier: string;
-  store: string;
-  createdDate: string;
-  expectedDeliveryDate: string;
+  _id: string;
+  purchaseOrderNumber: string;
+  supplier: {
+    name: string;
+  };
+  items: Array<{
+    description: string;
+    quantity: number;
+    price: number;
+  }>;
+  totalAmount: number;
+  deliveryDate: string;
+  status: string;
+  createdAt: string;
+  createdBy: {
+    name: string;
+  };
 }
 
 interface ReviewProps {
-  showMessage: (severity: 'success' | 'info' | 'warn' | 'error', summary: string, detail: string) => void;
+  showMessage: (
+    severity: "success" | "info" | "warn" | "error",
+    summary: string,
+    detail: string
+  ) => void;
 }
 
 const Review: React.FC<ReviewProps> = ({ showMessage }) => {
   const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>([]);
+  const [loading, setLoading] = useState(true);
   const [selectedStore, setSelectedStore] = useState<string | null>(null);
-  const [storeFilter, setStoreFilter] = useState('');
+  const [storeFilter, setStoreFilter] = useState("");
+
+  const navigate = useNavigate();
+
+  const fetchPurchaseOrders = useCallback(async () => {
+    try {
+      setLoading(true);
+      const token = localStorage.getItem("token");
+      if (!token) {
+        navigate("/login");
+        return;
+      }
+      const response = await axios.get<{ purchaseOrders: PurchaseOrder[] }>(
+        "http://localhost:5000/api/purchase-orders",
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (response.data && Array.isArray(response.data.purchaseOrders)) {
+        setPurchaseOrders(response.data.purchaseOrders);
+      } else {
+        console.error("Invalid response data:", response.data);
+        setPurchaseOrders([]);
+      }
+    } catch (error) {
+      console.error("Error fetching purchase orders:", error);
+      let errorMessage = "Failed to fetch purchase orders. Please try again.";
+      if (axios.isAxiosError(error)) {
+        const axiosError = error as AxiosError;
+        if (axiosError.response) {
+          errorMessage = axiosError.response.data.message || axiosError.message;
+        } else if (axiosError.request) {
+          errorMessage =
+            "No response received from the server. Please check your network connection.";
+        }
+        if (axiosError.response && axiosError.response.status === 401) {
+          errorMessage = "You are not logged in. Please log in and try again.";
+          navigate("/login");
+        }
+      }
+      setPurchaseOrders([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [navigate]);
 
   useEffect(() => {
-    // TODO: Fetch purchase orders from API
-    const mockData: PurchaseOrder[] = [
-      { id: '1', sku: 'SKU001', quantity: 10, creator: 'John Doe', approver: '', supplier: 'Supplier A', store: 'Store 1', createdDate: '2023-05-01', expectedDeliveryDate: '2023-05-15' },
-      { id: '2', sku: 'SKU002', quantity: 5, creator: 'John Doe', approver: '', supplier: 'Supplier A', store: 'Store 1', createdDate: '2023-05-01', expectedDeliveryDate: '2023-05-15' },
-      { id: '3', sku: 'SKU003', quantity: 8, creator: 'Alice Johnson', approver: '', supplier: 'Supplier B', store: 'Store 2', createdDate: '2023-05-02', expectedDeliveryDate: '2023-05-16' },
-      { id: '4', sku: 'SKU004', quantity: 12, creator: 'Alice Johnson', approver: '', supplier: 'Supplier B', store: 'Store 2', createdDate: '2023-05-02', expectedDeliveryDate: '2023-05-16' },
-    ];
-    setPurchaseOrders(mockData);
-  }, []);
+    fetchPurchaseOrders();
+  }, [fetchPurchaseOrders]);
 
   const storeOptions = [
-    { label: 'All Stores', value: null },
-    { label: 'Store 1', value: 'Store 1' },
-    { label: 'Store 2', value: 'Store 2' },
+    { label: "All Stores", value: null },
+    { label: "Store 1", value: "Store 1" },
+    { label: "Store 2", value: "Store 2" },
   ];
 
+  const handleStatusUpdate = async (
+    order: PurchaseOrder,
+    status: "approved" | "rejected"
+  ) => {
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        showMessage("error", "Error", "You are not logged in. Please log in and try again.");
+        navigate("/login");
+        return;
+      }
+
+      const response = await axios.patch(
+        `/api/purchase-orders/${order._id}/status`,
+        { status },
+        {
+          baseURL: process.env.REACT_APP_API_URL || "http://localhost:5000",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          timeout: 5000, // 5 seconds timeout
+        }
+      );
+      const updatedOrder = response.data;
+      setPurchaseOrders((prevOrders) =>
+        prevOrders.map((po) =>
+          po._id === updatedOrder._id ? updatedOrder : po
+        )
+      );
+      showMessage(
+        "success",
+        "Purchase Order Updated",
+        `Purchase order ${order.purchaseOrderNumber} has been ${status}.`
+      );
+    } catch (error) {
+      console.error(`Error ${status} purchase order:`, error);
+      if (axios.isAxiosError(error)) {
+        const axiosError = error as AxiosError;
+        let errorMessage = `Failed to ${status} purchase order: ${axiosError.message}`;
+        if (axiosError.response) {
+          errorMessage = `Failed to ${status} purchase order: ${axiosError.response.status} ${axiosError.response.statusText}`;
+          console.error("Response data:", axiosError.response.data);
+        } else if (axiosError.request) {
+          errorMessage = `No response received from the server. Please check your network connection.`;
+        }
+        showMessage("error", "Error", errorMessage);
+      } else {
+        showMessage(
+          "error",
+          "Error",
+          `An unknown error occurred while ${status} the purchase order`
+        );
+      }
+    }
+  };
+
   const handleApprove = (order: PurchaseOrder) => {
-    // TODO: Implement API call to approve purchase order
-    showMessage('success', 'Purchase Order Approved', `Purchase order ${order.id} has been approved.`);
+    handleStatusUpdate(order, "approved");
   };
 
   const handleReject = (order: PurchaseOrder) => {
-    // TODO: Implement API call to reject purchase order
-    showMessage('info', 'Purchase Order Rejected', `Purchase order ${order.id} has been rejected.`);
+    handleStatusUpdate(order, "rejected");
   };
 
   const actionTemplate = (rowData: PurchaseOrder) => {
     return (
       <>
-        <Button label="Approve" className="p-button-success p-mr-2" onClick={() => handleApprove(rowData)} />
-        <Button label="Reject" className="p-button-danger" onClick={() => handleReject(rowData)} />
+        <Button
+          label="Approve"
+          className="p-button-success p-mr-2"
+          onClick={() => handleApprove(rowData)}
+          disabled={rowData.status !== "pending"}
+        />
+        <Button
+          label="Reject"
+          className="p-button-danger"
+          onClick={() => handleReject(rowData)}
+          disabled={rowData.status !== "pending"}
+        />
       </>
     );
   };
 
   const filteredPurchaseOrders = purchaseOrders.filter((order) => {
     return (
-      (selectedStore === null || order.store === selectedStore) &&
-      order.store.toLowerCase().includes(storeFilter.toLowerCase())
+      (selectedStore === null || order.supplier.name === selectedStore) &&
+      order.supplier.name.toLowerCase().includes(storeFilter.toLowerCase())
     );
   });
 
@@ -77,25 +196,23 @@ const Review: React.FC<ReviewProps> = ({ showMessage }) => {
           value={selectedStore}
           options={storeOptions}
           onChange={(e) => setSelectedStore(e.value)}
-          placeholder="Store"
+          placeholder="Supplier"
           className="p-mr-2"
         />
         <InputText
-          placeholder="Filter by store"
+          placeholder="Filter by supplier"
           value={storeFilter}
           onChange={(e) => setStoreFilter(e.target.value)}
         />
-        <Button label="Apply Filter" className="p-ml-2" />
       </div>
-      <DataTable value={filteredPurchaseOrders}>
-        <Column field="sku" header="SKU" />
-        <Column field="quantity" header="Quantity" />
-        <Column field="creator" header="Creator" />
-        <Column field="approver" header="Approver" />
-        <Column field="supplier" header="Supplier" />
-        <Column field="store" header="Store" />
-        <Column field="createdDate" header="Created Date" />
-        <Column field="expectedDeliveryDate" header="Expected Delivery Date" />
+      <DataTable value={filteredPurchaseOrders} loading={loading}>
+        <Column field="orderNumber" header="Order Number" />
+        <Column field="supplier.name" header="Supplier" />
+        <Column field="totalAmount" header="Total Amount" />
+        <Column field="deliveryDate" header="Delivery Date" />
+        <Column field="status" header="Status" />
+        <Column field="createdAt" header="Created Date" />
+        <Column field="createdBy.name" header="Created By" />
         <Column body={actionTemplate} header="Actions" />
       </DataTable>
     </div>

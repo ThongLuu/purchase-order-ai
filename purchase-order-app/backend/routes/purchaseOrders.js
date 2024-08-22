@@ -6,12 +6,17 @@ const auth = require('../middleware/auth');
 
 // Function to generate a unique purchase order number
 async function generatePurchaseOrderNumber() {
-  const counter = await Counter.findOneAndUpdate(
-    { _id: 'purchaseOrderNumber' },
-    { $inc: { seq: 1 } },
-    { new: true, upsert: true }
-  );
-  return `PO-${counter.seq.toString().padStart(6, '0')}`;
+  try {
+    const counter = await Counter.findOneAndUpdate(
+      { _id: 'purchaseOrderNumber' },
+      { $inc: { seq: 1 } },
+      { new: true, upsert: true }
+    );
+    return `PO-${counter.seq.toString().padStart(6, '0')}`;
+  } catch (error) {
+    console.error('Error generating purchase order number:', error);
+    throw new Error('Failed to generate purchase order number');
+  }
 }
 
 // Get all purchase orders with pagination, sorting, and filtering
@@ -110,24 +115,32 @@ router.patch('/:id', auth, async (req, res) => {
   }
 });
 
-// Approve a purchase order
-router.patch('/:id/approve', auth, async (req, res) => {
+// Update purchase order status (approve or reject)
+router.patch('/:id/status', auth, async (req, res) => {
   try {
-    if (req.user.role !== 'approver') {
-      return res.status(403).json({ message: 'Not authorized to approve purchase orders' });
+    const { status } = req.body;
+    if (!['approved', 'rejected'].includes(status)) {
+      return res.status(400).json({ message: 'Invalid status. Status must be either "approved" or "rejected".' });
     }
+
     const updatedPurchaseOrder = await PurchaseOrder.findByIdAndUpdate(
       req.params.id,
-      { status: 'approved', approvedBy: req.user.id },
+      { 
+        status,
+        [status === 'approved' ? 'approvedBy' : 'rejectedBy']: req.user.id,
+        [status === 'approved' ? 'approvedAt' : 'rejectedAt']: new Date()
+      },
       { new: true }
     );
+
     if (!updatedPurchaseOrder) {
       return res.status(404).json({ message: 'Purchase order not found' });
     }
+
     res.json(updatedPurchaseOrder);
   } catch (err) {
-    console.error('Error approving purchase order:', err);
-    res.status(400).json({ message: 'An error occurred while approving the purchase order.', error: err.message });
+    console.error(`Error updating purchase order status:`, err);
+    res.status(400).json({ message: 'An error occurred while updating the purchase order status.', error: err.message });
   }
 });
 
