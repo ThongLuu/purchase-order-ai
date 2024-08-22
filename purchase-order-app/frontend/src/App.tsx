@@ -34,14 +34,20 @@ interface PurchaseOrderData {
 }
 
 const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+
+  const toggleSidebar = () => {
+    setIsSidebarOpen(!isSidebarOpen);
+  };
+
   return (
     <div className="layout">
       <nav className="layout-nav">
-        <div className="menu-icon">&#9776;</div>
+        <div className="menu-icon" onClick={toggleSidebar}>&#9776;</div>
         <h1>Purchase Order System</h1>
       </nav>
       <div className="layout-content">
-        <aside className="layout-sidebar">
+        <aside className={`layout-sidebar ${isSidebarOpen ? 'open' : 'closed'}`}>
           <ul>
             <li><Link to="/dashboard">Dashboard</Link></li>
             <li><Link to="/create-purchase-order">Create Order</Link></li>
