@@ -4,6 +4,7 @@ import { Column } from "primereact/column";
 import { Button } from "primereact/button";
 import { Dropdown } from "primereact/dropdown";
 import { InputText } from "primereact/inputtext";
+import { Dialog } from "primereact/dialog";
 import axios, { AxiosError } from "axios";
 import { useNavigate } from "react-router-dom";
 
@@ -40,6 +41,8 @@ const Review: React.FC<ReviewProps> = ({ showMessage }) => {
   const [loading, setLoading] = useState(true);
   const [selectedStore, setSelectedStore] = useState<string | null>(null);
   const [storeFilter, setStoreFilter] = useState("");
+  const [selectedPurchaseOrder, setSelectedPurchaseOrder] = useState<PurchaseOrder | null>(null);
+  const [dialogVisible, setDialogVisible] = useState(false);
 
   const navigate = useNavigate();
 
@@ -183,10 +186,48 @@ const Review: React.FC<ReviewProps> = ({ showMessage }) => {
 
   const filteredPurchaseOrders = purchaseOrders.filter((order) => {
     return (
-      (selectedStore === null || order.supplier.name === selectedStore) &&
-      order.supplier.name.toLowerCase().includes(storeFilter.toLowerCase())
+      (selectedStore === null || order.supplier?.name === selectedStore) &&
+      (order.supplier?.name?.toLowerCase().includes(storeFilter.toLowerCase()) ?? false)
     );
   });
+
+  const openPurchaseOrderDetails = (order: PurchaseOrder) => {
+    setSelectedPurchaseOrder(order);
+    setDialogVisible(true);
+  };
+
+  const PurchaseOrderDetailsDialog = () => {
+    if (!selectedPurchaseOrder) return null;
+
+    return (
+      <Dialog
+        header={`Purchase Order Details: ${selectedPurchaseOrder.purchaseOrderNumber}`}
+        visible={dialogVisible}
+        style={{ width: '80vw' }}
+        onHide={() => setDialogVisible(false)}
+      >
+        <div className="p-grid">
+          <div className="p-col-6">
+            <p><strong>Supplier:</strong> {selectedPurchaseOrder.supplier?.name}</p>
+            <p><strong>Total Amount:</strong> {selectedPurchaseOrder.totalAmount}</p>
+            <p><strong>Delivery Date:</strong> {selectedPurchaseOrder.deliveryDate}</p>
+          </div>
+          <div className="p-col-6">
+            <p><strong>Status:</strong> {selectedPurchaseOrder.status}</p>
+            <p><strong>Created Date:</strong> {selectedPurchaseOrder.createdAt}</p>
+            <p><strong>Created By:</strong> {selectedPurchaseOrder.createdBy?.name}</p>
+          </div>
+        </div>
+        <h3>Product List</h3>
+        <DataTable value={selectedPurchaseOrder.items}>
+          <Column field="description" header="Description" />
+          <Column field="quantity" header="Quantity" />
+          <Column field="price" header="Price" />
+          <Column body={(rowData) => (rowData.quantity || 0) * (rowData.price || 0)} header="Total" />
+        </DataTable>
+      </Dialog>
+    );
+  };
 
   return (
     <div className="review">
@@ -205,7 +246,11 @@ const Review: React.FC<ReviewProps> = ({ showMessage }) => {
           onChange={(e) => setStoreFilter(e.target.value)}
         />
       </div>
-      <DataTable value={filteredPurchaseOrders} loading={loading}>
+      <DataTable 
+        value={filteredPurchaseOrders} 
+        loading={loading}
+        onRowClick={(e) => openPurchaseOrderDetails(e.data as PurchaseOrder)}
+      >
         <Column field="orderNumber" header="Order Number" />
         <Column field="supplier.name" header="Supplier" />
         <Column field="totalAmount" header="Total Amount" />
@@ -215,6 +260,7 @@ const Review: React.FC<ReviewProps> = ({ showMessage }) => {
         <Column field="createdBy.name" header="Created By" />
         <Column body={actionTemplate} header="Actions" />
       </DataTable>
+      <PurchaseOrderDetailsDialog />
     </div>
   );
 };

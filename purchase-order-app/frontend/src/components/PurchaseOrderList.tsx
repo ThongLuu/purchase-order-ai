@@ -7,6 +7,13 @@ import { Calendar } from 'primereact/calendar';
 import { useNavigate } from 'react-router-dom';
 import axios, { AxiosError } from 'axios';
 import { Message } from 'primereact/message';
+import { Dialog } from 'primereact/dialog';
+
+interface PurchaseOrderItem {
+  description: string;
+  quantity: number;
+  price: number;
+}
 
 interface PurchaseOrder {
   _id: string;
@@ -18,6 +25,7 @@ interface PurchaseOrder {
   deliveryDate: string;
   status: string;
   createdAt: string;
+  items: PurchaseOrderItem[]; // Add this line
 }
 
 interface PurchaseOrderListProps {
@@ -34,6 +42,8 @@ const PurchaseOrderList: React.FC<PurchaseOrderListProps> = ({ showMessage }) =>
     status: '',
     createdDate: null as Date | null,
   });
+  const [selectedPurchaseOrder, setSelectedPurchaseOrder] = useState<PurchaseOrder | null>(null);
+  const [dialogVisible, setDialogVisible] = useState<boolean>(false);
 
   const navigate = useNavigate();
 
@@ -103,6 +113,11 @@ const PurchaseOrderList: React.FC<PurchaseOrderListProps> = ({ showMessage }) =>
     );
   });
 
+  const openPurchaseOrderDetails = (purchaseOrder: PurchaseOrder) => {
+    setSelectedPurchaseOrder(purchaseOrder);
+    setDialogVisible(true);
+  };
+
   return (
     <div className="purchase-order-list">
       {error && (
@@ -138,7 +153,13 @@ const PurchaseOrderList: React.FC<PurchaseOrderListProps> = ({ showMessage }) =>
           showIcon
         />
       </div>
-      <DataTable value={filteredPurchaseOrders} className="p-mt-3" loading={loading}>
+      <DataTable 
+        value={filteredPurchaseOrders} 
+        className="p-mt-3" 
+        loading={loading}
+        selectionMode="single"
+        onSelectionChange={(e) => openPurchaseOrderDetails(e.value)}
+      >
         <Column field="orderNumber" header="Order Number" />
         <Column field="supplier.name" header="Supplier Name" />
         <Column field="totalAmount" header="Total Amount" />
@@ -146,6 +167,31 @@ const PurchaseOrderList: React.FC<PurchaseOrderListProps> = ({ showMessage }) =>
         <Column field="status" header="Status" />
         <Column field="createdAt" header="Created Date" />
       </DataTable>
+
+      <Dialog 
+        header="Purchase Order Details" 
+        visible={dialogVisible} 
+        style={{ width: '50vw' }} 
+        onHide={() => setDialogVisible(false)}
+      >
+        {selectedPurchaseOrder && (
+          <div>
+            <p><strong>Order Number:</strong> {selectedPurchaseOrder.orderNumber}</p>
+            <p><strong>Supplier:</strong> {selectedPurchaseOrder.supplier.name}</p>
+            <p><strong>Total Amount:</strong> {selectedPurchaseOrder.totalAmount}</p>
+            <p><strong>Delivery Date:</strong> {selectedPurchaseOrder.deliveryDate}</p>
+            <p><strong>Status:</strong> {selectedPurchaseOrder.status}</p>
+            <p><strong>Created Date:</strong> {selectedPurchaseOrder.createdAt}</p>
+            <h3>Items:</h3>
+            <DataTable value={selectedPurchaseOrder.items}>
+              <Column field="description" header="Description" />
+              <Column field="quantity" header="Quantity" />
+              <Column field="price" header="Price" />
+              <Column field="price" header="Total" body={(rowData) => rowData.quantity * rowData.price} />
+            </DataTable>
+          </div>
+        )}
+      </Dialog>
     </div>
   );
 };

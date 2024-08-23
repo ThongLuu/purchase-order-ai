@@ -46,7 +46,8 @@ router.get('/', auth, async (req, res) => {
         totalAmount: po.totalAmount,
         deliveryDate: po.deliveryDate,
         status: po.status,
-        createdAt: po.createdAt
+        createdAt: po.createdAt,
+        items: po.items // Include the items (products) in the response
       })),
       totalPages: result.totalPages,
       currentPage: result.page,
