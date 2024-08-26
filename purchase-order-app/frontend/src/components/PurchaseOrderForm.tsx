@@ -6,6 +6,7 @@ import { Button } from "primereact/button";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
 import { FileUpload } from "primereact/fileupload";
+import { InputTextarea } from "primereact/inputtextarea";
 import * as XLSX from "xlsx";
 import SKUAutocomplete, { SKUAutocompleteProps } from "./SKUAutocomplete";
 import { useLocation } from "react-router-dom";
@@ -53,6 +54,8 @@ const PurchaseOrderForm: React.FC<PurchaseOrderFormProps> = ({
   const [deliveryDate, setDeliveryDate] = useState<Date | null>(null);
   const [skus, setSKUs] = useState<SKU[]>([]);
   const fileUploadRef = useRef<FileUpload>(null);
+  const [pastedData, setPastedData] = useState("");
+  const [generatedTable, setGeneratedTable] = useState<any[]>([]);
 
   const typeOptions = [
     { label: "Normal", value: "normal" },
@@ -330,6 +333,23 @@ const PurchaseOrderForm: React.FC<PurchaseOrderFormProps> = ({
     );
   };
 
+  const handlePastedData = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setPastedData(e.target.value);
+  };
+
+  const generateTable = () => {
+    const rows = pastedData.trim().split('\n');
+    const headers = rows[0].split('\t');
+    const data = rows.slice(1).map(row => {
+      const values = row.split('\t');
+      return headers.reduce((obj: any, header, index) => {
+        obj[header] = values[index];
+        return obj;
+      }, {});
+    });
+    setGeneratedTable(data);
+  };
+
   return (
     <form onSubmit={handleSubmit} className="p-fluid">
       <h2>Create Purchase Order</h2>
@@ -472,6 +492,26 @@ const PurchaseOrderForm: React.FC<PurchaseOrderFormProps> = ({
           />
         </div>
       </div>
+
+      <h3>Paste Excel Data</h3>
+      <InputTextarea
+        value={pastedData}
+        onChange={handlePastedData}
+        rows={5}
+        cols={30}
+        autoResize
+        placeholder="Paste your Excel data here"
+      />
+      <Button type="button" label="Generate Table" onClick={generateTable} className="p-mt-2" />
+
+      {generatedTable.length > 0 && (
+        <DataTable value={generatedTable} className="p-mt-2">
+          {Object.keys(generatedTable[0]).map((key) => (
+            <Column key={key} field={key} header={key} />
+          ))}
+        </DataTable>
+      )}
+
       <div>
         <h2>Import Purchase Orders from Google Sheets</h2>
         <input

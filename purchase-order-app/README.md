@@ -43,7 +43,7 @@ This application is designed for procurement managers to create, track, and veri
 
 4. Create a `.env` file in the `backend` directory with the following content:
    ```
-   PORT=5000
+   PORT=3001
    MONGODB_URI=mongodb://localhost/purchase_order_db
    JWT_SECRET=your_jwt_secret
    ```

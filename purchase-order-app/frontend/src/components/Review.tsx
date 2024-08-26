@@ -7,6 +7,7 @@ import { InputText } from "primereact/inputtext";
 import { Dialog } from "primereact/dialog";
 import axios, { AxiosError } from "axios";
 import { useNavigate } from "react-router-dom";
+import QrScanner from "qr-scanner";
 
 interface PurchaseOrder {
   _id: string;
@@ -43,6 +44,8 @@ const Review: React.FC<ReviewProps> = ({ showMessage }) => {
   const [storeFilter, setStoreFilter] = useState("");
   const [selectedPurchaseOrder, setSelectedPurchaseOrder] = useState<PurchaseOrder | null>(null);
   const [dialogVisible, setDialogVisible] = useState(false);
+  const [qrScannerVisible, setQrScannerVisible] = useState(false);
+  const [orderNumberFilter, setOrderNumberFilter] = useState("");
 
   const navigate = useNavigate();
 
@@ -55,7 +58,7 @@ const Review: React.FC<ReviewProps> = ({ showMessage }) => {
         return;
       }
       const response = await axios.get<{ purchaseOrders: PurchaseOrder[] }>(
-        "http://localhost:5000/api/purchase-orders",
+        "http://192.168.17.19:3001/api/purchase-orders",
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -117,7 +120,7 @@ const Review: React.FC<ReviewProps> = ({ showMessage }) => {
         `/api/purchase-orders/${order._id}/status`,
         { status },
         {
-          baseURL: process.env.REACT_APP_API_URL || "http://localhost:5000",
+          baseURL: process.env.REACT_APP_API_URL || "http://192.168.17.19:3001",
           headers: {
             Authorization: `Bearer ${token}`,
           },
@@ -187,7 +190,8 @@ const Review: React.FC<ReviewProps> = ({ showMessage }) => {
   const filteredPurchaseOrders = purchaseOrders.filter((order) => {
     return (
       (selectedStore === null || order.supplier?.name === selectedStore) &&
-      (order.supplier?.name?.toLowerCase().includes(storeFilter.toLowerCase()) ?? false)
+      (order.supplier?.name?.toLowerCase().includes(storeFilter.toLowerCase()) ?? false) &&
+      (orderNumberFilter === "" || order.purchaseOrderNumber.includes(orderNumberFilter))
     );
   });
 
@@ -229,6 +233,42 @@ const Review: React.FC<ReviewProps> = ({ showMessage }) => {
     );
   };
 
+  const handleQrCodeResult = (result: string) => {
+    setOrderNumberFilter(result);
+    setQrScannerVisible(false);
+    showMessage("success", "QR Code Scanned", `Filtered by Order Number: ${result}`);
+  };
+
+  const QRCodeScanner = () => {
+    const videoRef = React.useRef<HTMLVideoElement>(null);
+
+    useEffect(() => {
+      if (videoRef.current) {
+        const qrScanner = new QrScanner(
+          videoRef.current,
+          (result) => handleQrCodeResult(result.data),
+          { returnDetailedScanResult: true }
+        );
+        qrScanner.start();
+
+        return () => {
+          qrScanner.destroy();
+        };
+      }
+    }, []);
+
+    return (
+      <Dialog
+        header="Scan QR Code"
+        visible={qrScannerVisible}
+        style={{ width: '50vw' }}
+        onHide={() => setQrScannerVisible(false)}
+      >
+        <video ref={videoRef} style={{ width: '100%' }} />
+      </Dialog>
+    );
+  };
+
   return (
     <div className="review">
       <h2>Review Purchase Orders</h2>
@@ -244,6 +284,18 @@ const Review: React.FC<ReviewProps> = ({ showMessage }) => {
           placeholder="Filter by supplier"
           value={storeFilter}
           onChange={(e) => setStoreFilter(e.target.value)}
+          className="p-mr-2"
+        />
+        <InputText
+          placeholder="Filter by Order Number"
+          value={orderNumberFilter}
+          onChange={(e) => setOrderNumberFilter(e.target.value)}
+          className="p-mr-2"
+        />
+        <Button
+          label="Scan QR Code"
+          icon="pi pi-qrcode"
+          onClick={() => setQrScannerVisible(true)}
         />
       </div>
       <DataTable 
@@ -251,7 +303,7 @@ const Review: React.FC<ReviewProps> = ({ showMessage }) => {
         loading={loading}
         onRowClick={(e) => openPurchaseOrderDetails(e.data as PurchaseOrder)}
       >
-        <Column field="orderNumber" header="Order Number" />
+        <Column field="purchaseOrderNumber" header="Order Number" />
         <Column field="supplier.name" header="Supplier" />
         <Column field="totalAmount" header="Total Amount" />
         <Column field="deliveryDate" header="Delivery Date" />
@@ -261,6 +313,7 @@ const Review: React.FC<ReviewProps> = ({ showMessage }) => {
         <Column body={actionTemplate} header="Actions" />
       </DataTable>
       <PurchaseOrderDetailsDialog />
+      <QRCodeScanner />
     </div>
   );
 };

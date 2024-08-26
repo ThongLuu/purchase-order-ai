@@ -17,8 +17,8 @@ const Login: React.FC<LoginProps> = ({ setIsAuthenticated, showMessage }) => {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      // Temporarily use a hardcoded URL
-      const apiUrl = 'http://localhost:5000';
+      // Use a dynamic API URL based on the current environment
+      const apiUrl = process.env.REACT_APP_API_URL || window.location.origin;
       const response = await fetch(`${apiUrl}/api/users/login`, {
         method: 'POST',
         headers: {
