@@ -497,7 +497,7 @@ const PurchaseOrderForm: React.FC<PurchaseOrderFormProps> = ({
       </div>
 
       <h3>Paste dữ liệu từ Excel vào ô dưới:</h3>
-      <textarea 
+      <InputTextarea 
         rows={10} 
         cols={100} 
         placeholder="Paste dữ liệu từ Excel vào đây..." 
@@ -506,37 +506,24 @@ const PurchaseOrderForm: React.FC<PurchaseOrderFormProps> = ({
 
       <h3>Bảng dữ liệu:</h3>
       {rows.length > 0 ? (
-        <table border={1}>
-          <thead>
-            <tr>
-              {headers.map((header, index) => (
-                <th key={index}>{header}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((row, rowIndex) => (
-              <tr key={rowIndex}>
-                {row.map((cell, cellIndex) => (
-                  <td key={cellIndex}>{cell}</td>
-                ))}
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <DataTable value={rows} className="p-datatable-sm">
+          {headers.map((header, index) => (
+            <Column key={index} field={index.toString()} header={header} />
+          ))}
+        </DataTable>
       ) : (
         <p>Chưa có dữ liệu.</p>
       )}
 
       <div>
         <h2>Import Purchase Orders from Google Sheets</h2>
-        <input
+        <InputText
           type="text"
           value={sheetUrl}
           onChange={(e) => setSheetUrl(e.target.value)}
           placeholder="Enter Google Sheet URL"
         />
-        <button onClick={handleImport}>Import from Google Sheet</button>
+        <Button label="Import from Google Sheet" onClick={handleImport} className="p-mt-2" />
       </div>
 
       <div className="p-d-flex p-jc-center p-mt-4">
