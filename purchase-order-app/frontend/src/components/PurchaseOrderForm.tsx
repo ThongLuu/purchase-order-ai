@@ -54,8 +54,28 @@ const PurchaseOrderForm: React.FC<PurchaseOrderFormProps> = ({
   const [deliveryDate, setDeliveryDate] = useState<Date | null>(null);
   const [skus, setSKUs] = useState<SKU[]>([]);
   const fileUploadRef = useRef<FileUpload>(null);
-  const [pastedData, setPastedData] = useState("");
-  const [generatedTable, setGeneratedTable] = useState<any[]>([]);
+  const [headers, setHeaders] = useState<string[]>([]);
+  const [rows, setRows] = useState<string[][]>([]);
+
+  const handlePaste = (event: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    event.preventDefault();
+    
+    // Lấy dữ liệu clipboard từ sự kiện paste
+    const clipboardData = event.clipboardData;
+    const pastedData = clipboardData.getData('Text');
+    
+    // Tách dữ liệu thành các dòng
+    const dataRows = pastedData.trim().split('\n').filter(Boolean); // Loại bỏ các dòng trống
+    
+    // Tách mỗi dòng thành các cột (giả sử dữ liệu cách nhau bằng tab "\t")
+    const parsedData = dataRows.map(row => row.split('\t').map(cell => cell.trim())); // Loại bỏ khoảng trắng thừa
+    
+    // Thiết lập headers (tiêu đề cột)
+    setHeaders(parsedData[0] || []);
+    
+    // Thiết lập rows (dữ liệu bảng)
+    setRows(parsedData.slice(1));
+  };
 
   const typeOptions = [
     { label: "Normal", value: "normal" },
@@ -333,23 +353,6 @@ const PurchaseOrderForm: React.FC<PurchaseOrderFormProps> = ({
     );
   };
 
-  const handlePastedData = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setPastedData(e.target.value);
-  };
-
-  const generateTable = () => {
-    const rows = pastedData.trim().split('\n');
-    const headers = rows[0].split('\t');
-    const data = rows.slice(1).map(row => {
-      const values = row.split('\t');
-      return headers.reduce((obj: any, header, index) => {
-        obj[header] = values[index];
-        return obj;
-      }, {});
-    });
-    setGeneratedTable(data);
-  };
-
   return (
     <form onSubmit={handleSubmit} className="p-fluid">
       <h2>Create Purchase Order</h2>
@@ -493,23 +496,36 @@ const PurchaseOrderForm: React.FC<PurchaseOrderFormProps> = ({
         </div>
       </div>
 
-      <h3>Paste Excel Data</h3>
-      <InputTextarea
-        value={pastedData}
-        onChange={handlePastedData}
-        rows={5}
-        cols={30}
-        autoResize
-        placeholder="Paste your Excel data here"
+      <h3>Paste dữ liệu từ Excel vào ô dưới:</h3>
+      <textarea 
+        rows={10} 
+        cols={100} 
+        placeholder="Paste dữ liệu từ Excel vào đây..." 
+        onPaste={handlePaste}
       />
-      <Button type="button" label="Generate Table" onClick={generateTable} className="p-mt-2" />
 
-      {generatedTable.length > 0 && (
-        <DataTable value={generatedTable} className="p-mt-2">
-          {Object.keys(generatedTable[0]).map((key) => (
-            <Column key={key} field={key} header={key} />
-          ))}
-        </DataTable>
+      <h3>Bảng dữ liệu:</h3>
+      {rows.length > 0 ? (
+        <table border={1}>
+          <thead>
+            <tr>
+              {headers.map((header, index) => (
+                <th key={index}>{header}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row, rowIndex) => (
+              <tr key={rowIndex}>
+                {row.map((cell, cellIndex) => (
+                  <td key={cellIndex}>{cell}</td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      ) : (
+        <p>Chưa có dữ liệu.</p>
       )}
 
       <div>
