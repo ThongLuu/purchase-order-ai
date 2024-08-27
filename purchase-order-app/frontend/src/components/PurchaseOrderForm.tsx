@@ -12,8 +12,8 @@ import SKUAutocomplete, { SKUAutocompleteProps } from "./SKUAutocomplete";
 import { useLocation } from "react-router-dom";
 import { toPng } from "html-to-image";
 import download from "downloadjs";
-import pdfMake from 'pdfmake/build/pdfmake';
-import pdfFonts from 'pdfmake/build/vfs_fonts';
+import pdfMake from "pdfmake/build/pdfmake";
+import pdfFonts from "pdfmake/build/vfs_fonts";
 
 interface SKU {
   sku: string;
@@ -362,20 +362,19 @@ const PurchaseOrderForm: React.FC<PurchaseOrderFormProps> = ({
   };
 
   const exportToPDF = () => {
-
     // Định nghĩa cấu trúc PDF với header và rows động
     const docDefinition = {
       content: [
-        { text: 'Bảng dữ liệu', style: 'header' },
+        { text: "Bảng dữ liệu", style: "header" },
         {
           table: {
             headerRows: 1,
-            widths: Array(headers.length).fill('*'), // Tự động điều chỉnh số cột
+            widths: Array(headers.length).fill("*"), // Tự động điều chỉnh số cột
             body: [
               headers, // Header động
               ...rows, // Rows động
             ],
-            layout: 'lightHorizontalLines' // Cải thiện layout bảng
+            layout: "lightHorizontalLines", // Cải thiện layout bảng
           },
         },
       ],
@@ -383,14 +382,18 @@ const PurchaseOrderForm: React.FC<PurchaseOrderFormProps> = ({
         header: {
           fontSize: 18,
           bold: true,
-          marginBottom: 10,
+          // marginBottom: 10,
         },
       },
-      pageOrientation: 'landscape' as 'landscape', // Sử dụng hướng ngang để hiển thị nhiều dữ liệu hơn
+      defaultStyle: {
+        fontSize: 6, // Giảm kích thước font để phù hợp với một trang
+      },
+      pageOrientation: "landscape" as "landscape",
+      pageMargins: [20, 40, 20, 40] as [number, number, number, number], // Sử dụng hướng ngang để hiển thị nhiều dữ liệu hơn
     };
 
     // Xuất file PDF
-    pdfMake.createPdf(docDefinition).download('table.pdf');
+    pdfMake.createPdf(docDefinition).download("table.pdf");
   };
 
   const exportToExcel = () => {
