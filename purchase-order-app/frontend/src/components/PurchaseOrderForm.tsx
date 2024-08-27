@@ -10,6 +10,10 @@ import { InputTextarea } from "primereact/inputtextarea";
 import * as XLSX from "xlsx";
 import SKUAutocomplete, { SKUAutocompleteProps } from "./SKUAutocomplete";
 import { useLocation } from "react-router-dom";
+import { toPng } from "html-to-image";
+import download from "downloadjs";
+import pdfMake from 'pdfmake/build/pdfmake';
+import pdfFonts from 'pdfmake/build/vfs_fonts';
 
 interface SKU {
   sku: string;
@@ -57,22 +61,26 @@ const PurchaseOrderForm: React.FC<PurchaseOrderFormProps> = ({
   const [headers, setHeaders] = useState<string[]>([]);
   const [rows, setRows] = useState<string[][]>([]);
 
+  pdfMake.vfs = pdfFonts.pdfMake.vfs;
+
   const handlePaste = (event: React.ClipboardEvent<HTMLTextAreaElement>) => {
     event.preventDefault();
-    
+
     // Lấy dữ liệu clipboard từ sự kiện paste
     const clipboardData = event.clipboardData;
-    const pastedData = clipboardData.getData('Text');
-    
+    const pastedData = clipboardData.getData("Text");
+
     // Tách dữ liệu thành các dòng
-    const dataRows = pastedData.trim().split('\n').filter(Boolean); // Loại bỏ các dòng trống
-    
+    const dataRows = pastedData.trim().split("\n").filter(Boolean); // Loại bỏ các dòng trống
+
     // Tách mỗi dòng thành các cột (giả sử dữ liệu cách nhau bằng tab "\t")
-    const parsedData = dataRows.map(row => row.split('\t').map(cell => cell.trim())); // Loại bỏ khoảng trắng thừa
-    
+    const parsedData = dataRows.map((row) =>
+      row.split("\t").map((cell) => cell.trim())
+    ); // Loại bỏ khoảng trắng thừa
+
     // Thiết lập headers (tiêu đề cột)
     setHeaders(parsedData[0] || []);
-    
+
     // Thiết lập rows (dữ liệu bảng)
     setRows(parsedData.slice(1));
   };
@@ -142,7 +150,7 @@ const PurchaseOrderForm: React.FC<PurchaseOrderFormProps> = ({
       setSKUs(newSKUs);
     }
   }, [location]);
-  
+
   const addSKU = () => {
     const newSKU: SKU = {
       sku: "",
@@ -353,6 +361,65 @@ const PurchaseOrderForm: React.FC<PurchaseOrderFormProps> = ({
     );
   };
 
+  const exportToPDF = () => {
+
+    // Định nghĩa cấu trúc PDF với header và rows động
+    const docDefinition = {
+      content: [
+        { text: 'Bảng dữ liệu', style: 'header' },
+        {
+          table: {
+            headerRows: 1,
+            widths: Array(headers.length).fill('*'), // Tự động điều chỉnh số cột
+            body: [
+              headers, // Header động
+              ...rows, // Rows động
+            ],
+            layout: 'lightHorizontalLines' // Cải thiện layout bảng
+          },
+        },
+      ],
+      styles: {
+        header: {
+          fontSize: 18,
+          bold: true,
+          marginBottom: 10,
+        },
+      },
+      pageOrientation: 'landscape' as 'landscape', // Sử dụng hướng ngang để hiển thị nhiều dữ liệu hơn
+    };
+
+    // Xuất file PDF
+    pdfMake.createPdf(docDefinition).download('table.pdf');
+  };
+
+  const exportToExcel = () => {
+    const wb = XLSX.utils.book_new();
+
+    // Tạo worksheet từ headers và rows
+    const wsData = [headers, ...rows];
+    const ws = XLSX.utils.aoa_to_sheet(wsData);
+
+    // Thêm worksheet vào workbook
+    XLSX.utils.book_append_sheet(wb, ws, "Sheet1");
+
+    // Xuất file Excel
+    XLSX.writeFile(wb, "table.xlsx");
+  };
+
+  const exportToImage = () => {
+    const tableElement = document.getElementById("dataTable");
+    if (tableElement) {
+      toPng(tableElement)
+        .then((dataUrl) => {
+          download(dataUrl, "table.png");
+        })
+        .catch((error) => {
+          console.error("Export to image failed", error);
+        });
+    }
+  };
+
   return (
     <form onSubmit={handleSubmit} className="p-fluid">
       <h2>Create Purchase Order</h2>
@@ -497,16 +564,16 @@ const PurchaseOrderForm: React.FC<PurchaseOrderFormProps> = ({
       </div>
 
       <h3>Paste dữ liệu từ Excel vào ô dưới:</h3>
-      <InputTextarea 
-        rows={10} 
-        cols={100} 
-        placeholder="Paste dữ liệu từ Excel vào đây..." 
+      <InputTextarea
+        rows={10}
+        cols={100}
+        placeholder="Paste dữ liệu từ Excel vào đây..."
         onPaste={handlePaste}
       />
 
       <h3>Bảng dữ liệu:</h3>
       {rows.length > 0 ? (
-        <DataTable value={rows} className="p-datatable-sm">
+        <DataTable value={rows} className="p-datatable-sm" id="dataTable">
           {headers.map((header, index) => (
             <Column key={index} field={index.toString()} header={header} />
           ))}
@@ -514,6 +581,10 @@ const PurchaseOrderForm: React.FC<PurchaseOrderFormProps> = ({
       ) : (
         <p>Chưa có dữ liệu.</p>
       )}
+
+      <Button onClick={exportToPDF} type="button" label="Export PDF" />
+      <Button onClick={exportToExcel} type="button" label="Export Excel" />
+      <Button onClick={exportToImage} type="button" label="Export Image" />
 
       <div>
         <h2>Import Purchase Orders from Google Sheets</h2>
@@ -523,7 +594,11 @@ const PurchaseOrderForm: React.FC<PurchaseOrderFormProps> = ({
           onChange={(e) => setSheetUrl(e.target.value)}
           placeholder="Enter Google Sheet URL"
         />
-        <Button label="Import from Google Sheet" onClick={handleImport} className="p-mt-2" />
+        <Button
+          label="Import from Google Sheet"
+          onClick={handleImport}
+          className="p-mt-2"
+        />
       </div>
 
       <div className="p-d-flex p-jc-center p-mt-4">
