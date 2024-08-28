@@ -14,6 +14,7 @@ import { toPng } from "html-to-image";
 import download from "downloadjs";
 import pdfMake from "pdfmake/build/pdfmake";
 import pdfFonts from "pdfmake/build/vfs_fonts";
+import axios from "axios";
 
 interface SKU {
   sku: string;

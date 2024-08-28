@@ -58,7 +58,7 @@ const Review: React.FC<ReviewProps> = ({ showMessage }) => {
         return;
       }
       const response = await axios.get<{ purchaseOrders: PurchaseOrder[] }>(
-        "http://192.168.17.19:3001/api/purchase-orders",
+        `${process.env.REACT_APP_API_URL}/api/purchase-orders`,
         {
           headers: {
             Authorization: `Bearer ${token}`,

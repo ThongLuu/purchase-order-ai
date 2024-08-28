@@ -57,7 +57,7 @@ const PurchaseOrderList: React.FC<PurchaseOrderListProps> = ({ showMessage }) =>
         navigate('/login');
         return;
       }
-      const response = await axios.get<{ purchaseOrders: PurchaseOrder[] }>('http://192.168.17.19:3001/api/purchase-orders', {
+      const response = await axios.get<{ purchaseOrders: PurchaseOrder[] }>(`${process.env.REACT_APP_API_URL}/api/purchase-orders`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
