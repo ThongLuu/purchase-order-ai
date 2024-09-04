@@ -6,6 +6,9 @@ const { default: axios } = require("axios");
 const { google } = require('googleapis');
 const bodyParser = require('body-parser');
 const session = require('express-session');
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
 
 const app = express();
 
@@ -18,9 +21,56 @@ app.use(express.json());
 app.use(bodyParser.json());
 app.use(session({ secret: process.env.SESSION_SECRET, resave: false, saveUninitialized: true }));
 
+// Create uploads directory if it doesn't exist
+const uploadsDir = path.join(__dirname, 'uploads');
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir);
+}
+
+// Configure multer for file upload
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, 'uploads/') // Make sure this directory exists
+  },
+  filename: function (req, file, cb) {
+    cb(null, file.fieldname + '-' + Date.now() + path.extname(file.originalname))
+  }
+});
+
+const upload = multer({ 
+  storage: storage,
+  limits: { fileSize: 10 * 1024 * 1024 } // 10 MB limit
+});
+
 // Routes
 app.use("/api/purchase-orders", require("./routes/purchaseOrders"));
 app.use("/api/users", require("./routes/users"));
+
+// Updated route for file upload
+app.post('/api/upload', (req, res) => {
+  upload.single('file')(req, res, function (err) {
+    if (err instanceof multer.MulterError) {
+      // A Multer error occurred when uploading.
+      console.error("Multer error:", err);
+      return res.status(500).json({ message: `Multer error: ${err.message}` });
+    } else if (err) {
+      // An unknown error occurred when uploading.
+      console.error("Unknown error:", err);
+      return res.status(500).json({ message: `Unknown error: ${err.message}` });
+    }
+
+    // Everything went fine.
+    if (!req.file) {
+      return res.status(400).send('No file uploaded.');
+    }
+    console.log("File uploaded successfully:", req.file);
+    res.json({
+      message: 'File uploaded successfully',
+      filepath: req.file.path
+    });
+  });
+});
+
 app.use(
   "/proxy",
   async (req, res) => {

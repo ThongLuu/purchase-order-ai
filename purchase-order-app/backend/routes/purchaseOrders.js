@@ -3,6 +3,20 @@ const router = express.Router();
 const PurchaseOrder = require('../models/purchaseOrder');
 const Counter = require('../models/counter');
 const auth = require('../middleware/auth');
+const multer = require('multer');
+const path = require('path');
+
+// Set up multer for file upload
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, 'uploads/') // Make sure this directory exists
+  },
+  filename: function (req, file, cb) {
+    cb(null, Date.now() + path.extname(file.originalname))
+  }
+});
+
+const upload = multer({ storage: storage });
 
 // Function to generate a unique purchase order number
 async function generatePurchaseOrderNumber() {
@@ -63,7 +77,7 @@ router.get('/', auth, async (req, res) => {
 router.post('/', auth, async (req, res) => {
   try {
     // Input validation
-    const { supplier, items, totalAmount, deliveryDate } = req.body;
+    const { supplier, items, totalAmount, deliveryDate, type, creator, approver, store, createdDate, additionalInfo } = req.body;
     if (!supplier || !supplier.name || !items || !Array.isArray(items) || items.length === 0 || !totalAmount || !deliveryDate) {
       return res.status(400).json({ message: 'Invalid input. Please provide supplier.name, items array, totalAmount, and deliveryDate.' });
     }
@@ -84,6 +98,12 @@ router.post('/', auth, async (req, res) => {
       totalAmount,
       deliveryDate,
       status: 'pending',
+      type,
+      creator,
+      approver,
+      store,
+      createdDate,
+      additionalInfo,
       createdBy: req.user.id
     });
 
@@ -173,6 +193,35 @@ router.delete('/:id', auth, async (req, res) => {
   } catch (err) {
     console.error('Error deleting purchase order:', err);
     res.status(500).json({ message: 'An error occurred while deleting the purchase order.', error: err.message });
+  }
+});
+
+// New route for additional info
+router.post('/additional-info', auth, async (req, res) => {
+  try {
+    const { purchaseOrderId, additionalInfo } = req.body;
+
+    if (!purchaseOrderId || !additionalInfo) {
+      return res.status(400).json({ message: 'Invalid input. Please provide purchaseOrderId and additionalInfo.' });
+    }
+
+    const updatedPurchaseOrder = await PurchaseOrder.findByIdAndUpdate(
+      purchaseOrderId,
+      { $set: { additionalInfo: additionalInfo } },
+      { new: true, runValidators: true }
+    );
+
+    if (!updatedPurchaseOrder) {
+      return res.status(404).json({ message: 'Purchase order not found' });
+    }
+
+    res.json({
+      message: 'Additional info added successfully',
+      purchaseOrder: updatedPurchaseOrder
+    });
+  } catch (err) {
+    console.error('Error adding additional info to purchase order:', err);
+    res.status(500).json({ message: 'An error occurred while adding additional info to the purchase order.', error: err.message });
   }
 });
 

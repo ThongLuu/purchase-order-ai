@@ -51,6 +51,26 @@ const PurchaseOrderSchema = new mongoose.Schema({
     enum: ['pending', 'approved', 'shipped', 'delivered'],
     default: 'pending',
   },
+  type: {
+    type: String,
+    required: true,
+  },
+  creator: {
+    type: String,
+    required: true,
+  },
+  approver: {
+    type: String,
+    required: true,
+  },
+  store: {
+    type: String,
+    required: true,
+  },
+  createdDate: {
+    type: Date,
+    required: true,
+  },
   createdBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
@@ -76,6 +96,11 @@ const PurchaseOrderSchema = new mongoose.Schema({
   createdAt: {
     type: Date,
     default: Date.now,
+  },
+  additionalInfo: {
+    phone_contact: String,
+    message: String,
+    pathname: String,
   },
 });
 

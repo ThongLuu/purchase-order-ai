@@ -38,7 +38,7 @@ interface PurchaseOrderData {
 }
 
 interface PurchaseOrderFormProps {
-  onSubmit: (data: PurchaseOrderData) => void;
+  onSubmit: (data: PurchaseOrderData) => Promise<any>;
   showMessage: (
     severity: "success" | "info" | "warn" | "error",
     summary: string,
@@ -61,28 +61,24 @@ const PurchaseOrderForm: React.FC<PurchaseOrderFormProps> = ({
   const fileUploadRef = useRef<FileUpload>(null);
   const [headers, setHeaders] = useState<string[]>([]);
   const [rows, setRows] = useState<string[][]>([]);
+  const [fileName, setFileName] = useState("");
+  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
 
   pdfMake.vfs = pdfFonts.pdfMake.vfs;
 
   const handlePaste = (event: React.ClipboardEvent<HTMLTextAreaElement>) => {
     event.preventDefault();
 
-    // Lấy dữ liệu clipboard từ sự kiện paste
     const clipboardData = event.clipboardData;
     const pastedData = clipboardData.getData("Text");
 
-    // Tách dữ liệu thành các dòng
-    const dataRows = pastedData.trim().split("\n").filter(Boolean); // Loại bỏ các dòng trống
+    const dataRows = pastedData.trim().split("\n").filter(Boolean);
 
-    // Tách mỗi dòng thành các cột (giả sử dữ liệu cách nhau bằng tab "\t")
     const parsedData = dataRows.map((row) =>
       row.split("\t").map((cell) => cell.trim())
-    ); // Loại bỏ khoảng trắng thừa
+    );
 
-    // Thiết lập headers (tiêu đề cột)
     setHeaders(parsedData[0] || []);
-
-    // Thiết lập rows (dữ liệu bảng)
     setRows(parsedData.slice(1));
   };
 
@@ -124,7 +120,6 @@ const PurchaseOrderForm: React.FC<PurchaseOrderFormProps> = ({
   const location = useLocation();
 
   useEffect(() => {
-    // Lấy dữ liệu từ query params
     const queryParams = new URLSearchParams(location.search);
     const sheetData = queryParams.get("data");
 
@@ -132,7 +127,6 @@ const PurchaseOrderForm: React.FC<PurchaseOrderFormProps> = ({
       const data = JSON.parse(sheetData);
       const header = data[0];
 
-      // Chuyển đổi các hàng tiếp theo thành các object
       const objectsArray = data.slice(1).map((row: { [x: string]: any }) => {
         let obj: { [key: string]: any } = {};
         header.forEach((key: string, index: number) => {
@@ -191,7 +185,6 @@ const PurchaseOrderForm: React.FC<PurchaseOrderFormProps> = ({
           throw new Error("No valid SKUs found in the Excel file");
         }
 
-        // Merge existing SKUs with new SKUs
         const mergedSKUs = [...skus, ...newSKUs];
         setSKUs(mergedSKUs);
         showMessage(
@@ -200,7 +193,6 @@ const PurchaseOrderForm: React.FC<PurchaseOrderFormProps> = ({
           `File processed and ${newSKUs.length} SKUs added successfully`
         );
 
-        // Clear the file input
         if (fileUploadRef.current) {
           fileUploadRef.current.clear();
         }
@@ -224,7 +216,7 @@ const PurchaseOrderForm: React.FC<PurchaseOrderFormProps> = ({
     reader.readAsBinaryString(file);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (
@@ -271,7 +263,56 @@ const PurchaseOrderForm: React.FC<PurchaseOrderFormProps> = ({
       createdDate: createdDate.toISOString(),
     };
 
-    onSubmit(purchaseOrderData);
+    try {
+      // Get the token from localStorage
+      const token = localStorage.getItem("token");
+
+      if (!token) {
+        throw new Error("Authentication token not found");
+      }
+
+      let filepath = "";
+      console.log("Uploaded file:", uploadedFile);
+
+      // If there's an uploaded file, upload it
+      if (uploadedFile) {
+        const formData = new FormData();
+        formData.append("file", uploadedFile);
+
+        const uploadResponse = await axios.post(
+          `${process.env.REACT_APP_API_URL}/api/upload`,
+          formData,
+          {
+            headers: {
+              "Content-Type": "multipart/form-data",
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+        console.log("File upload response:", uploadResponse.data);
+
+        if (uploadResponse.status === 200) {
+          filepath = uploadResponse.data.filepath;
+        } else {
+          throw new Error("File upload failed");
+        }
+      }
+
+      // Submit the purchase order
+      const response = await onSubmit(purchaseOrderData);
+      showMessage(
+        "success",
+        "Purchase Order Created",
+        "Purchase order created and additional information saved successfully."
+      );
+    } catch (error) {
+      console.error("Error creating purchase order:", error);
+      showMessage(
+        "error",
+        "Error",
+        "There was an error creating the purchase order. Please try again."
+      );
+    }
   };
 
   const actionTemplate = (_: any, { rowIndex }: { rowIndex: number }) => {
@@ -280,7 +321,7 @@ const PurchaseOrderForm: React.FC<PurchaseOrderFormProps> = ({
         icon="pi pi-trash"
         className="p-button-rounded p-button-danger p-button-text"
         onClick={(e) => {
-          e.preventDefault(); // Prevent form submission
+          e.preventDefault();
           removeSKU(rowIndex);
         }}
       />
@@ -295,7 +336,7 @@ const PurchaseOrderForm: React.FC<PurchaseOrderFormProps> = ({
       productName: product.title,
       description: product.handle,
       price: product.price,
-      quantity: updatedSKUs[rowIndex].quantity || 1, // Preserve existing quantity or set to 1 if not defined
+      quantity: updatedSKUs[rowIndex].quantity || 1,
     };
     setSKUs(updatedSKUs);
   };
@@ -324,7 +365,6 @@ const PurchaseOrderForm: React.FC<PurchaseOrderFormProps> = ({
         onChange={(e) => {
           options.editorCallback(e.target.value);
 
-          // Update the SKU in the state
           const updatedSKUs = [...skus];
           updatedSKUs[options.rowIndex] = {
             ...updatedSKUs[options.rowIndex],
@@ -349,7 +389,6 @@ const PurchaseOrderForm: React.FC<PurchaseOrderFormProps> = ({
               : parseFloat(e.target.value);
           options.editorCallback(value);
 
-          // Update the SKU in the state
           const updatedSKUs = [...skus];
           updatedSKUs[options.rowIndex] = {
             ...updatedSKUs[options.rowIndex],
@@ -363,19 +402,16 @@ const PurchaseOrderForm: React.FC<PurchaseOrderFormProps> = ({
   };
 
   const exportToPDF = () => {
-    // Định nghĩa cấu trúc PDF với header và rows động
+    const exportedFileName = fileName || "table.pdf";
     const docDefinition = {
       content: [
         { text: "Bảng dữ liệu", style: "header" },
         {
           table: {
             headerRows: 1,
-            widths: Array(headers.length).fill("*"), // Tự động điều chỉnh số cột
-            body: [
-              headers, // Header động
-              ...rows, // Rows động
-            ],
-            layout: "lightHorizontalLines", // Cải thiện layout bảng
+            widths: Array(headers.length).fill("*"),
+            body: [headers, ...rows],
+            layout: "lightHorizontalLines",
           },
         },
       ],
@@ -383,40 +419,37 @@ const PurchaseOrderForm: React.FC<PurchaseOrderFormProps> = ({
         header: {
           fontSize: 18,
           bold: true,
-          // marginBottom: 10,
         },
       },
       defaultStyle: {
-        fontSize: 6, // Giảm kích thước font để phù hợp với một trang
+        fontSize: 6,
       },
       pageOrientation: "landscape" as "landscape",
-      pageMargins: [20, 40, 20, 40] as [number, number, number, number], // Sử dụng hướng ngang để hiển thị nhiều dữ liệu hơn
+      pageMargins: [20, 40, 20, 40] as [number, number, number, number],
     };
 
-    // Xuất file PDF
-    pdfMake.createPdf(docDefinition).download("table.pdf");
+    pdfMake.createPdf(docDefinition).download(exportedFileName);
   };
 
   const exportToExcel = () => {
+    const exportedFileName = fileName || "table.xlsx";
     const wb = XLSX.utils.book_new();
 
-    // Tạo worksheet từ headers và rows
     const wsData = [headers, ...rows];
     const ws = XLSX.utils.aoa_to_sheet(wsData);
 
-    // Thêm worksheet vào workbook
     XLSX.utils.book_append_sheet(wb, ws, "Sheet1");
 
-    // Xuất file Excel
-    XLSX.writeFile(wb, "table.xlsx");
+    XLSX.writeFile(wb, exportedFileName);
   };
 
   const exportToImage = () => {
+    const exportedFileName = fileName || "table.png";
     const tableElement = document.getElementById("dataTable");
     if (tableElement) {
       toPng(tableElement)
         .then((dataUrl) => {
-          download(dataUrl, "table.png");
+          download(dataUrl, exportedFileName);
         })
         .catch((error) => {
           console.error("Export to image failed", error);
@@ -586,6 +619,16 @@ const PurchaseOrderForm: React.FC<PurchaseOrderFormProps> = ({
         <p>Chưa có dữ liệu.</p>
       )}
 
+      <div className="p-field">
+        <label htmlFor="fileName">File Name</label>
+        <InputText
+          id="fileName"
+          value={fileName}
+          onChange={(e) => setFileName(e.target.value)}
+          placeholder="Enter file name (optional)"
+        />
+      </div>
+
       <Button onClick={exportToPDF} type="button" label="Export PDF" />
       <Button onClick={exportToExcel} type="button" label="Export Excel" />
       <Button onClick={exportToImage} type="button" label="Export Image" />
@@ -602,6 +645,20 @@ const PurchaseOrderForm: React.FC<PurchaseOrderFormProps> = ({
           label="Import from Google Sheet"
           onClick={handleImport}
           className="p-mt-2"
+        />
+      </div>
+
+      <div className="p-field">
+        <label htmlFor="fileUpload">Upload File</label>
+        <FileUpload
+          mode="basic"
+          accept="image/*,application/pdf"
+          maxFileSize={10000000}
+          customUpload
+          auto
+          uploadHandler={(e) => {
+            setUploadedFile(e.files[0]);
+          }}
         />
       </div>
 
