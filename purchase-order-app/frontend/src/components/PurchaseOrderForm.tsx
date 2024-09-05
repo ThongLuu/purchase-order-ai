@@ -35,6 +35,11 @@ interface PurchaseOrderData {
   approver: string;
   store: string;
   createdDate: string;
+  additionalInfo: {
+    phone_contact: String;
+    message: String;
+    pathname: String;
+  };
 }
 
 interface PurchaseOrderFormProps {
@@ -261,6 +266,11 @@ const PurchaseOrderForm: React.FC<PurchaseOrderFormProps> = ({
       approver,
       store,
       createdDate: createdDate.toISOString(),
+      additionalInfo: {
+        phone_contact: "0356 077 423",
+        message: "Gửi Purchase Order",
+        pathname: "",
+      },
     };
 
     try {
@@ -292,14 +302,15 @@ const PurchaseOrderForm: React.FC<PurchaseOrderFormProps> = ({
         console.log("File upload response:", uploadResponse.data);
 
         if (uploadResponse.status === 200) {
-          filepath = uploadResponse.data.filepath;
+          purchaseOrderData.additionalInfo.pathname =
+            uploadResponse.data.filepath;
         } else {
           throw new Error("File upload failed");
         }
       }
 
       // Submit the purchase order
-      const response = await onSubmit(purchaseOrderData);
+      await onSubmit(purchaseOrderData);
       showMessage(
         "success",
         "Purchase Order Created",
@@ -652,7 +663,7 @@ const PurchaseOrderForm: React.FC<PurchaseOrderFormProps> = ({
         <label htmlFor="fileUpload">Upload File</label>
         <FileUpload
           mode="basic"
-          accept="image/*,application/pdf"
+          accept="image/*,application/pdf,.xls,.xlsx"
           maxFileSize={10000000}
           customUpload
           auto
